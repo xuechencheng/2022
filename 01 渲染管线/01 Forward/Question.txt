@@ -1,0 +1,2 @@
+DrawObjectsPass和RenderObjectsPass各自的作用是什么？
+渲染管线用到的贴图有哪些？
