@@ -876,32 +876,29 @@ namespace UnityEngine.Rendering.Universal.Internal
             var desc = GetCompatibleDescriptor(tw, th, m_DefaultHDRFormat);
             cmd.GetTemporaryRT(ShaderConstants._BloomMipDown[0], desc, FilterMode.Bilinear);
             cmd.GetTemporaryRT(ShaderConstants._BloomMipUp[0], desc, FilterMode.Bilinear);
-            Blit(cmd, source, ShaderConstants._BloomMipDown[0], bloomMaterial, 0);//先做模糊
+            Blit(cmd, source, ShaderConstants._BloomMipDown[0], bloomMaterial, 0);//1,先获取高亮溢出部分
             // Downsample - gaussian pyramid
             int lastDown = ShaderConstants._BloomMipDown[0];
-            for (int i = 1; i < mipCount; i++)//生成模糊图片数组
+            for (int i = 1; i < mipCount; i++)//2,生成模糊图片数组,存在ShaderConstants._BloomMipDown[]
             {
                 tw = Mathf.Max(1, tw >> 1);
                 th = Mathf.Max(1, th >> 1);
                 int mipDown = ShaderConstants._BloomMipDown[i];
                 int mipUp = ShaderConstants._BloomMipUp[i];
-
                 desc.width = tw;
                 desc.height = th;
-
                 cmd.GetTemporaryRT(mipDown, desc, FilterMode.Bilinear);
                 cmd.GetTemporaryRT(mipUp, desc, FilterMode.Bilinear);
-
                 // Classic two pass gaussian blur - use mipUp as a temporary target
                 //   First pass does 2x downsampling + 9-tap gaussian
                 //   Second pass does 9-tap gaussian using a 5-tap filter + bilinear filtering
                 Blit(cmd, lastDown, mipUp, bloomMaterial, 1);
                 Blit(cmd, mipUp, mipDown, bloomMaterial, 2);
-
                 lastDown = mipDown;
             }
 
             // Upsample (bilinear by default, HQ filtering does bicubic instead
+            //3,模糊叠加，将数组图通过lerp方式混合起来
             for (int i = mipCount - 2; i >= 0; i--)
             {
                 int lowMip = (i == mipCount - 2) ? ShaderConstants._BloomMipDown[i + 1] : ShaderConstants._BloomMipUp[i + 1];

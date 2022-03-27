@@ -20,7 +20,7 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
         #define Scatter             _Params.x//散射
         #define ClampMax            _Params.y//钳子
         #define Threshold           _Params.z//阈值
-        #define ThresholdKnee       _Params.w//阈值膝盖
+        #define ThresholdKnee       _Params.w//阈值膝盖0.5 * Threshold
 
         half4 EncodeHDR(half3 color)
         {
@@ -48,13 +48,16 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
             return color.xyz;
         #endif
         }
-        //取周围像素对像素进行模糊操作，并根据颜色亮度给颜色乘以一个系数
+        //提取亮度溢出的像素
+        //1,取周围像素对像素进行模糊操作
+        //2,阈值，当亮度小于阈值时，系数接近于0；亮度大于阈值之后，亮度越大系数越大
         half4 FragPrefilter(Varyings input) : SV_Target
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.uv);
         #if _BLOOM_HQ
             float texelSize = _SourceTex_TexelSize.x;
+            // 8 + 4 + 1 = 13
             half4 A = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv + texelSize * float2(-1.0, -1.0));
             half4 B = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv + texelSize * float2(0.0, -1.0));
             half4 C = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv + texelSize * float2(1.0, -1.0));
@@ -68,9 +71,9 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
             half4 K = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv + texelSize * float2(-1.0, 1.0));
             half4 L = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv + texelSize * float2(0.0, 1.0));
             half4 M = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv + texelSize * float2(1.0, 1.0));
-            half2 div = (1.0 / 4.0) * half2(0.5, 0.125); 
-            half4 o = (D + E + I + J) * div.x;
-            o += (A + B + G + F) * div.y;
+            half2 div = (1.0 / 4.0) * half2(0.5, 0.125); //( 1/8, 1/32)
+            half4 o = (D + E + I + J) * div.x;//4 * 1 / 8
+            o += (A + B + G + F) * div.y;//4 * 1 / 32
             o += (B + C + H + G) * div.y;
             o += (F + G + L + K) * div.y;
             o += (G + H + M + L) * div.y;
@@ -82,7 +85,7 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
             color = min(ClampMax, color);
             // Thresholding
             half brightness = Max3(color.r, color.g, color.b);
-            half softness = clamp(brightness - Threshold + ThresholdKnee, 0.0, 2.0 * ThresholdKnee);
+            half softness = clamp(brightness - Threshold + ThresholdKnee, 0.0, 2.0 * ThresholdKnee);//软度
             softness = (softness * softness) / (4.0 * ThresholdKnee + 1e-4);
             half multiplier = max(brightness - Threshold, softness) / max(brightness, 1e-4);
             color *= multiplier;
@@ -158,6 +161,7 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
 
         Pass
         {
+            //获取一张亮度可以向周围溢出的贴图
             Name "Bloom Prefilter"
             HLSLPROGRAM
                 #pragma vertex FullscreenVert
@@ -168,6 +172,7 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
 
         Pass
         {
+            //横向模糊
             Name "Bloom Blur Horizontal"
             HLSLPROGRAM
                 #pragma vertex FullscreenVert
@@ -177,6 +182,7 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
 
         Pass
         {
+            //纵向模糊
             Name "Bloom Blur Vertical"
 
             HLSLPROGRAM
@@ -188,7 +194,7 @@ Shader "Hidden/Universal Render Pipeline/Bloom"
         Pass
         {
             Name "Bloom Upsample"
-
+            //lerp(_SourceTex,_SourceTexLowMip,Scatter)
             HLSLPROGRAM
                 #pragma vertex FullscreenVert
                 #pragma fragment FragUpsample
