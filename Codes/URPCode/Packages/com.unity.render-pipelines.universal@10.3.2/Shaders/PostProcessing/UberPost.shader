@@ -47,7 +47,10 @@ Shader "Hidden/Universal Render Pipeline/UberPost"
         float4 _Grain_TilingParams;
         float4 _Bloom_Texture_TexelSize;
         float4 _Dithering_Params;
-
+        // _Distortion_Params1 center.x, center.y, Mathf.Max(m_LensDistortion.xMultiplier.value, 1e-4f),
+        // Mathf.Max(m_LensDistortion.yMultiplier.value, 1e-4f)
+        // _Distortion_Params2 m_LensDistortion.intensity.value >= 0f ? theta : 1f / theta,
+        // sigma, 1f / m_LensDistortion.scale.value, m_LensDistortion.intensity.value * 100f
         #define DistCenter              _Distortion_Params1.xy
         #define DistAxis                _Distortion_Params1.zw
         #define DistTheta               _Distortion_Params2.x // [1.6, 160] / 360的弧度值，如果intensity是负数就取倒数
@@ -109,7 +112,7 @@ Shader "Hidden/Universal Render Pipeline/UberPost"
 
             return uv;
         }
-
+ 
         half4 Frag(Varyings input) : SV_Target
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);

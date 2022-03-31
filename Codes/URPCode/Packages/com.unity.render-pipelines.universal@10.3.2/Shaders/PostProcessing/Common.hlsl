@@ -80,7 +80,7 @@ half3 ApplyTonemap(half3 input)
 
     return saturate(input);
 }
-
+//userLutParams.xyz {1f / m_ColorLookup.texture.value.width, 1f / m_ColorLookup.texture.value.height, m_ColorLookup.texture.value.height - 1f}
 half3 ApplyColorGrading(half3 input, float postExposure, TEXTURE2D_PARAM(lutTex, lutSampler), float3 lutParams, TEXTURE2D_PARAM(userLutTex, userLutSampler), float3 userLutParams, float userLutContrib)
 {
     // Artist request to fine tune exposure in post without affecting bloom, dof etc
