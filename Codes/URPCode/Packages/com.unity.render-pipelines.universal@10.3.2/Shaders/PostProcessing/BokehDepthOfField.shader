@@ -27,23 +27,29 @@ Shader "Hidden/Universal Render Pipeline/BokehDepthOfField"
         float4 _CoCParams;
         float4 _BokehKernel[SAMPLE_COUNT];
 
-        #define FocusDist       _CoCParams.x
+        #define FocusDist       _CoCParams.x//焦点距离
         #define MaxCoC          _CoCParams.y
-        #define MaxRadius       _CoCParams.z
-        #define RcpAspect       _CoCParams.w
-        //跟相机到物体距离有关的一个数值，0.5的时候FocusDist = linearEyeDepth
+        #define MaxRadius       _CoCParams.z//Mathf.Min(0.05f, 14 / viewportHeight); 0.05
+        #define RcpAspect       _CoCParams.w//h / w
+        //跟相机到物体距离有关的一个数值，焦点处为0.5
+        //linearEyeDepth = FocusDist时，coc = 0.5
+        //linearEyeDepth = maxcoc * FocusDist / (maxcoc - 1)时，coc = 1
+        //linearEyeDepth = maxcoc * FocusDist / (maxcoc + 1)时，coc = 0
+        //焦距大小为2maxcoc * f / (maxcoc * maxcoc - 1) 所以maxcoc越大，景深越小。maxcoc与景深负相关。
+        //返回一个coc值[0,1],焦点处为0.5
         half FragCoC(Varyings input) : SV_Target
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.uv);
             float depth = LOAD_TEXTURE2D_X(_CameraDepthTexture, _SourceSize.xy * uv).x;
             float linearEyeDepth = LinearEyeDepth(depth, _ZBufferParams);
-            half coc = (1.0 - FocusDist / linearEyeDepth) * MaxCoC;
-            half nearCoC = clamp(coc, -1.0, 0.0);
-            half farCoC = saturate(coc);
-            return saturate((farCoC + nearCoC + 1.0) * 0.5);
+            half coc = (1.0 - FocusDist / linearEyeDepth) * MaxCoC;//FocusDist∈[ 0.1, ∞]
+            half nearCoC = clamp(coc, -1.0, 0.0);//近的coc∈[-1, 0]
+            half farCoC = saturate(coc);//远的coc∈[0,1]
+            return saturate((farCoC + nearCoC + 1.0) * 0.5);//[0, 1] 比焦点近的属于[0, 0.5] 比焦点远的∈[0.5, 1] [n,f]
         }
-
+        //color = avgColor * smoothstep(0, _SourceSize.w * 2.0, abs(coc));
+        //coc = [-0.05, 0.05]
         half4 FragPrefilter(Varyings input) : SV_Target
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -53,86 +59,69 @@ Shader "Hidden/Universal Render Pipeline/BokehDepthOfField"
             half4 cr = GATHER_RED_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv);
             half4 cg = GATHER_GREEN_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv);
             half4 cb = GATHER_BLUE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv);
-
             half3 c0 = half3(cr.x, cg.x, cb.x);
             half3 c1 = half3(cr.y, cg.y, cb.y);
             half3 c2 = half3(cr.z, cg.z, cb.z);
             half3 c3 = half3(cr.w, cg.w, cb.w);
-
             // Sample CoCs
             half4 cocs = GATHER_TEXTURE2D_X(_FullCoCTexture, sampler_LinearClamp, uv) * 2.0 - 1.0;
             half coc0 = cocs.x;
             half coc1 = cocs.y;
             half coc2 = cocs.z;
             half coc3 = cocs.w;
-
         #else
-
-            float3 duv = _SourceSize.zwz * float3(0.5, 0.5, -0.5);
-            float2 uv0 = uv - duv.xy;
-            float2 uv1 = uv - duv.zy;
-            float2 uv2 = uv + duv.zy;
+            float3 duv = _SourceSize.zwz * float3(0.5, 0.5, -0.5);//width, height, 1.0f / width, 1.0f / height
+            float2 uv0 = uv - duv.xy;//(0.5/w, 0.5/h)
+            float2 uv1 = uv - duv.zy;//
+            float2 uv2 = uv + duv.zy;//
             float2 uv3 = uv + duv.xy;
-
             // Sample source colors
             half3 c0 = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv0).xyz;
             half3 c1 = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv1).xyz;
             half3 c2 = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv2).xyz;
             half3 c3 = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv3).xyz;
-
             // Sample CoCs
-            half coc0 = SAMPLE_TEXTURE2D_X(_FullCoCTexture, sampler_LinearClamp, uv0).x * 2.0 - 1.0;
+            half coc0 = SAMPLE_TEXTURE2D_X(_FullCoCTexture, sampler_LinearClamp, uv0).x * 2.0 - 1.0;//[-1, 1]
             half coc1 = SAMPLE_TEXTURE2D_X(_FullCoCTexture, sampler_LinearClamp, uv1).x * 2.0 - 1.0;
             half coc2 = SAMPLE_TEXTURE2D_X(_FullCoCTexture, sampler_LinearClamp, uv2).x * 2.0 - 1.0;
             half coc3 = SAMPLE_TEXTURE2D_X(_FullCoCTexture, sampler_LinearClamp, uv3).x * 2.0 - 1.0;
-
         #endif
 
         #if COC_LUMA_WEIGHTING
-
             // Apply CoC and luma weights to reduce bleeding and flickering
             half w0 = abs(coc0) / (Max3(c0.x, c0.y, c0.z) + 1.0);
             half w1 = abs(coc1) / (Max3(c1.x, c1.y, c1.z) + 1.0);
             half w2 = abs(coc2) / (Max3(c2.x, c2.y, c2.z) + 1.0);
             half w3 = abs(coc3) / (Max3(c3.x, c3.y, c3.z) + 1.0);
-
             // Weighted average of the color samples
             half3 avg = c0 * w0 + c1 * w1 + c2 * w2 + c3 * w3;
             avg /= max(w0 + w1 + w2 + w3, 1e-5);
-
         #else
-
             half3 avg = (c0 + c1 + c2 + c3) / 4.0;
-
         #endif
-
             // Select the largest CoC value
             half cocMin = min(coc0, Min3(coc1, coc2, coc3));
             half cocMax = max(coc0, Max3(coc1, coc2, coc3));
-            half coc = (-cocMin > cocMax ? cocMin : cocMax) * MaxRadius;
-
+            //取周围四个点coc绝对值最大的点 * 0.05
+            half coc = (-cocMin > cocMax ? cocMin : cocMax) * MaxRadius;//Mathf.Min(0.05f, 14 / viewportHeight);
             // Premultiply CoC
-            avg *= smoothstep(0, _SourceSize.w * 2.0, abs(coc));
-
+            avg *= smoothstep(0, _SourceSize.w * 2.0, abs(coc));//_SourceSize.w height 当abs(coc) > w * 2时 avg = 1，也就是说在景深范围外arg *= 1。
         #if defined(UNITY_COLORSPACE_GAMMA)
             avg = SRGBToLinear(avg);
         #endif
-
             return half4(avg, coc);
         }
 
         void Accumulate(float4 samp0, float2 uv, float2 disp, inout half4 farAcc, inout half4 nearAcc)
         {
             float dist = length(disp);
-
-            float2 duv = float2(disp.x * RcpAspect, disp.y);
+            float2 duv = float2(disp.x * RcpAspect, disp.y); // h / w
             half4 samp = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv + duv);
-
             // Compare CoC of the current sample and the center sample and select smaller one
             half farCoC = max(min(samp0.a, samp.a), 0.0);
 
             // Compare the CoC to the sample distance & add a small margin to smooth out
-            const half margin = _SourceSize.w * _DownSampleScaleFactor.w * 2.0;
+            const half margin = _SourceSize.w * _DownSampleScaleFactor.w * 2.0;//margin = 4 / height
             half farWeight = saturate((farCoC - dist + margin) / margin);
             half nearWeight = saturate((-samp.a - dist + margin) / margin);
 
@@ -149,33 +138,25 @@ Shader "Hidden/Universal Render Pipeline/BokehDepthOfField"
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.uv);
-
-            half4 samp0 = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv);
-
+            half4 samp0 = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, uv);//_SourceTex : _PingTexture
             half4 farAcc = 0.0;  // Background: far field bokeh
             half4 nearAcc = 0.0; // Foreground: near field bokeh
-
             // Center sample isn't in the kernel array, accumulate it separately
             Accumulate(samp0, uv, 0.0, farAcc, nearAcc);
-
             UNITY_LOOP
             for (int si = 0; si < SAMPLE_COUNT; si++)
             {
                 float2 disp = _BokehKernel[si].xy * MaxRadius;
                 Accumulate(samp0, uv, disp, farAcc, nearAcc);
             }
-
             // Get the weighted average
             farAcc.rgb /= farAcc.a + (farAcc.a == 0.0);     // Zero-div guard
             nearAcc.rgb /= nearAcc.a + (nearAcc.a == 0.0);
-
             // Normalize the total of the weights for the near field
             nearAcc.a *= PI / (SAMPLE_COUNT + 1);
-
             // Alpha premultiplying
             half alpha = saturate(nearAcc.a);
             half3 rgb = lerp(farAcc.rgb, nearAcc.rgb, alpha);
-
             return half4(rgb, alpha);
         }
 

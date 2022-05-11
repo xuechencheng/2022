@@ -18,7 +18,7 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
         TEXTURE2D_X(_FullCoCTexture);
         TEXTURE2D_X(_HalfCoCTexture);
 
-        float4 _SourceSize;
+        float4 _SourceSize;//new Vector4(width, height, 1.0f / width, 1.0f / height)
         float4 _DownSampleScaleFactor;
 
         float3 _CoCParams;
@@ -64,7 +64,7 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
         };
 
         #endif
-        //º∆À„…Ó∂»÷µ±»¿˝
+        //saturate((lineDepth - FarStart) / (FarEnd - FarStart))
         half FragCoC(Varyings input) : SV_Target
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -86,16 +86,8 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.uv);
         #if _HIGH_QUALITY_SAMPLING
-            // Use a rotated grid to minimize artifacts coming from horizontal and vertical boundaries
-            // "High Quality Antialiasing" [Lorach07]
             const int kCount = 5;
-            const float2 kTaps[] = {
-                float2( 0.0,  0.0),
-                float2( 0.9, -0.4),
-                float2(-0.9,  0.4),
-                float2( 0.4,  0.9),
-                float2(-0.4, -0.9)
-            };
+            const float2 kTaps[] = { float2( 0.0,  0.0), float2( 0.9, -0.4), float2(-0.9,  0.4), float2( 0.4,  0.9), float2(-0.4, -0.9) };
             half3 colorAcc = 0.0;
             half farCoCAcc = 0.0;
             UNITY_UNROLL
@@ -108,13 +100,10 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
                 colorAcc += tapColor * coc;
                 farCoCAcc += coc;
             }
-            half3 color = colorAcc * rcp(kCount);//rcp øÏÀŸΩ¸ ”µƒµπ ˝
+            half3 color = colorAcc * rcp(kCount);
             half farCoC = farCoCAcc * rcp(kCount);
         #else
-            // Bilinear sampling the coc is technically incorrect but we're aiming for speed here
             half farCoC = SAMPLE_TEXTURE2D_X(_FullCoCTexture, sampler_LinearClamp, uv).x;
-            // Fast bilinear downscale of the source target and pre-multiply the CoC to reduce
-            // bleeding of background blur on focused areas
             half3 color = SAMPLE_TEXTURE2D_X(_ColorTexture, sampler_LinearClamp, uv).xyz;
             color *= farCoC;
         #endif
@@ -123,32 +112,28 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
             o.color = color;
             return o;
         }
-        // ƒ£∫˝ ???
+        // Blur
         half4 Blur(Varyings input, float2 dir, float premultiply)
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.uv);
-
             // Use the center CoC as radius
-            int2 positionSS = int2(_SourceSize.xy * _DownSampleScaleFactor.xy * uv); //_DownSampleScaleFactor(1/2, 1/2, 2, 2)
+            //_SourceSize(width, height, 1.0f / width, 1.0f / height)
+            //_DownSampleScaleFactor(1/2, 1/2, 2, 2)
+            int2 positionSS = int2(_SourceSize.xy * _DownSampleScaleFactor.xy * uv);
             half samp0CoC = LOAD_TEXTURE2D_X(_HalfCoCTexture, positionSS).x;
-
-            float2 offset = _SourceSize.zw * _DownSampleScaleFactor.zw * dir * samp0CoC * MaxRadius;//—ÿ◊≈ƒ≥∏ˆ∑ΩœÚ∆´“∆£¨∆´“∆¡ø∫Õcoc≥…’˝±»
-            //_SourceSize : new Vector4(width, height, 1.0f / width, 1.0f / height)
+            float2 offset = _SourceSize.zw * _DownSampleScaleFactor.zw * dir * samp0CoC * MaxRadius;//‰∏écocÊàêÊ≠£ÊØîÁöÑoffset
             half4 acc = 0.0;
-
             UNITY_UNROLL
             for (int i = 0; i < kTapCount; i++)
             {
                 float2 sampCoord = uv + kOffsets[i] * offset;
                 half sampCoC = SAMPLE_TEXTURE2D_X(_HalfCoCTexture, sampler_LinearClamp, sampCoord).x;
                 half3 sampColor = SAMPLE_TEXTURE2D_X(_SourceTex, sampler_LinearClamp, sampCoord).xyz;
-
                 // Weight & pre-multiply to limit bleeding on the focused area
                 half weight = saturate(1.0 - (samp0CoC - sampCoC));
                 acc += half4(sampColor, premultiply ? sampCoC : 1.0) * kCoeffs[i] * weight;
             }
-
             acc.xyz /= acc.w + 1e-4; // Zero-div guard
             return half4(acc.xyz, 1.0);
         }
@@ -167,29 +152,24 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.uv);
-
-            half3 baseColor = LOAD_TEXTURE2D_X(_SourceTex, _SourceSize.xy * uv).xyz;
+            half3 baseColor = LOAD_TEXTURE2D_X(_SourceTex, _SourceSize.xy * uv).xyz;//ÂéüÈ¢úËâ≤Ë¥¥Âõæ
             half coc = LOAD_TEXTURE2D_X(_FullCoCTexture, _SourceSize.xy * uv).x;
-
         #if _HIGH_QUALITY_SAMPLING && !defined(SHADER_API_GLES)
             half3 farColor = SampleTexture2DBicubic(TEXTURE2D_X_ARGS(_ColorTexture, sampler_LinearClamp), uv, _SourceSize * _DownSampleScaleFactor, 1.0, unity_StereoEyeIndex).xyz;
         #else
-            half3 farColor = SAMPLE_TEXTURE2D_X(_ColorTexture, sampler_LinearClamp, uv).xyz;
+            half3 farColor = SAMPLE_TEXTURE2D_X(_ColorTexture, sampler_LinearClamp, uv).xyz;//ColorTexture PingTexture
         #endif
-
             half3 dstColor = 0.0;
             half dstAlpha = 1.0;
-
             UNITY_BRANCH
-            if (coc > 0.0)//«ÂŒ˙µƒµÿ∑Ω
+            if (coc > 0.0)
             {
                 // Non-linear blend
                 // "CryEngine 3 Graphics Gems" [Sousa13]
-                half blend = sqrt(coc * TWO_PI);//coc‘Ω¥Û‘Ω«ÂŒ˙
+                half blend = sqrt(coc * TWO_PI);//cocË∂äÂ§ßÔºåblendË∂äÂ§ß
                 dstColor = farColor * saturate(blend);
-                dstAlpha = saturate(1.0 - blend);
+                dstAlpha = saturate(1.0 - blend);//cocË∂äÂ§ßÔºådstAlphaË∂äÂ∞è
             }
-
             return half4(baseColor * dstAlpha + dstColor, 1.0);
         }
 
@@ -197,11 +177,9 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
 
     SubShader
     {
-        //1£¨ƒ£∫˝£ª2£¨‘⁄Ãÿ∂®…Ó∂»∑∂Œß£¨Ω´ƒ£∫˝∫Õ—’…´ÕºΩ¯––ªÏ∫œ
         Tags { "RenderPipeline" = "UniversalPipeline" }
         LOD 100
         ZTest Always ZWrite Off Cull Off
-
         Pass
         {
             Name "Gaussian Depth Of Field CoC"

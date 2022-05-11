@@ -1,0 +1,19 @@
+for(int i = 0; i < 1000; i++){
+    vector randPos = rand(i);
+    addpoint(0, randPos);
+}
+
+int nearpt = nearpoints( 0, @P, 1, 2)[1];//@P该点自身位置
+if(@ptnum > nearpt){
+    addprim(0, 'polyline', nearpt, @ptnum);//@ptnum自身点序号
+}
+
+
+int nearpts[] = nearpoints( 0, @P, 1, 2)[1:];//@P该点自身位置
+foreach (int nearpt; nearpts)
+{
+    if(@ptnum > nearpt){
+        addprim(0, 'polyline', nearpt, @ptnum);//@ptnum自身点序号
+    }
+}
+

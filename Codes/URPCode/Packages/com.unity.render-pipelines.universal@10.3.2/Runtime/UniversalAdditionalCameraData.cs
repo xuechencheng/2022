@@ -306,7 +306,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 获取ScriptableRenderer
+        /// 获取ScriptableRenderer Done
         /// </summary>
         public ScriptableRenderer scriptableRenderer
         {

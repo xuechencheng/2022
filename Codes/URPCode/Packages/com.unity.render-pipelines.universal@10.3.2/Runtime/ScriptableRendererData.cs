@@ -45,7 +45,7 @@ namespace UnityEngine.Rendering.Universal
             isInvalidated = true;
         }
         /// <summary>
-        /// 创建 Renderer
+        /// 创建 Renderer Done
         /// </summary>
         /// <returns></returns>
         internal ScriptableRenderer InternalCreateRenderer()

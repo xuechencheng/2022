@@ -24,7 +24,7 @@ namespace UnityEngine.Rendering
         internal static Dictionary<TEnum, TProfilingSampler<TEnum>> samples = new Dictionary<TEnum, TProfilingSampler<TEnum>>();
 #endif
         /// <summary>
-        /// 使用枚举构建Dictionary<TEnum, TProfilingSampler<TEnum>>
+        /// Done
         /// </summary>
         static TProfilingSampler()
         {
@@ -53,27 +53,21 @@ namespace UnityEngine.Rendering
     // Done
     public class ProfilingSampler
     {
-        // Done
-        public static ProfilingSampler Get<TEnum>(TEnum marker) where TEnum : Enum
-        {
-#if USE_UNSAFE
-            return TProfilingSampler<TEnum>.samples[Unsafe.As<TEnum, int>(ref marker)];
-#else
-            TProfilingSampler<TEnum>.samples.TryGetValue( marker, out var sampler);
-            return sampler;
-#endif
-        }
+        internal CustomSampler sampler { get; private set; }
+        internal CustomSampler inlineSampler { get; private set; }
+        public string name { get; private set; }
+       
         /// <summary>
-        /// 创建CustomSampler，获取Recorder Done
+        /// Done
         /// </summary>
         public ProfilingSampler(string name)
         {
 #if UNITY_USE_RECORDER
-            sampler = CustomSampler.Create(name, true); // Event markers, command buffer CPU profiling and GPU profiling
+            sampler = CustomSampler.Create(name, true);
 #else
             sampler = CustomSampler.Create($"Dummy_{name}");
 #endif
-            inlineSampler = CustomSampler.Create($"Inl_{name}"); // Profiles code "immediately" $的作用类似于string.Format
+            inlineSampler = CustomSampler.Create($"Inl_{name}"); //$的作用类似于string.Format
             this.name = name;
 #if UNITY_USE_RECORDER
             m_Recorder = sampler.GetRecorder();
@@ -82,6 +76,18 @@ namespace UnityEngine.Rendering
             m_InlineRecorder.enabled = false;
 #endif
         }
+
+        // Done
+        public static ProfilingSampler Get<TEnum>(TEnum marker) where TEnum : Enum
+        {
+#if USE_UNSAFE
+            return TProfilingSampler<TEnum>.samples[Unsafe.As<TEnum, int>(ref marker)];
+#else
+            TProfilingSampler<TEnum>.samples.TryGetValue(marker, out var sampler);
+            return sampler;
+#endif
+        }
+
         /// <summary>
         /// BeginSample Done
         /// </summary>
@@ -116,9 +122,7 @@ namespace UnityEngine.Rendering
         }
 
         internal bool IsValid() { return (sampler != null && inlineSampler != null); }
-        internal CustomSampler sampler { get; private set; }
-        internal CustomSampler inlineSampler { get; private set; }
-        public string name { get; private set; }
+        
 #if UNITY_USE_RECORDER
         Recorder m_Recorder;
         Recorder m_InlineRecorder;
@@ -192,7 +196,7 @@ namespace UnityEngine.Rendering
         bool                m_Disposed;
         ProfilingSampler    m_Sampler;
         /// <summary>
-        /// 开始采样
+        /// 开始采样 Done
         /// </summary>
         public ProfilingScope(CommandBuffer cmd, ProfilingSampler sampler)
         {
@@ -202,7 +206,7 @@ namespace UnityEngine.Rendering
             m_Sampler?.Begin(m_Cmd);
         }
         /// <summary>
-        ///  停止采样
+        ///  停止采样 Done
         /// </summary>
         public void Dispose()
         {
@@ -210,7 +214,7 @@ namespace UnityEngine.Rendering
         }
 
         /// <summary>
-        /// 停止采样
+        /// 停止采样 Done
         /// </summary>
         /// <param name="disposing"></param>
         void Dispose(bool disposing)

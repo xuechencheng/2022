@@ -1,0 +1,33 @@
+@Cd = colormap('opdef:/Object/mocapbiped3?clothing_001.jpg', @uv);
+v@Cd2 = colormap('opdef:/Object/mocapbiped3?clothing_004.jpg', @uv);
+
+//v@Cd2创建属性 Cd2是名字 v是类型
+int nearpt = nearpoint(1, @P, chf('../sphere1/scale'));
+i@pt = nearpt;//将变量值赋给属性，便于观察
+if(nearpt != -1){
+    @Cd = { 1, 0, 0};
+}
+
+
+
+//chf('../sphere1/scale') 读取其他节点的属性
+
+
+vector targetPos = point( 1, "P", 0);
+int nearpts[] = nearpoints( 0, targetPos, chf('maxdist'), 1000);
+foreach(int nearpt; nearpts){
+    vector cd2 = point(0, 'Cd2', nearpt);
+    //cd2 = {1, 0, 0};
+    setpointattrib(0, "Cd", nearpt, cd2, "set");
+}
+//printf('%g\n', targetPos);
+//printf('%g\n', len(nearpts));
+//printf('%g\n', nearpts);
+
+int nbs[] = neighbours( 0, @ptnum);
+foreach(int nb; nbs){
+    if(point( 0, 'infected', nb) == 1){
+        @Cd = v@Cd2;
+        i@infected = 1;
+    }
+}

@@ -104,8 +104,6 @@ float4 TransformWViewToHClip(float3 positionVS)
     return mul(GetViewToHClipMatrix(), float4(positionVS, 1.0));
 }
 
-// Normalize to support uniform scaling
-// 1st
 float3 TransformObjectToWorldDir(float3 dirOS, bool doNormalize = true)
 {
     #ifndef SHADER_STAGE_RAY_TRACING
@@ -115,7 +113,6 @@ float3 TransformObjectToWorldDir(float3 dirOS, bool doNormalize = true)
     #endif
     if (doNormalize)
         return SafeNormalize(dirWS);
-
     return dirWS;
 }
 
@@ -153,8 +150,7 @@ real3 TransformWorldToHClipDir(real3 directionWS, bool doNormalize = false)
     return dirHCS;
 }
 
-// Transforms normal from object to world space
-// 1st
+// 使用逆转置矩阵变换法线
 float3 TransformObjectToWorldNormal(float3 normalOS, bool doNormalize = true)
 {
 #ifdef UNITY_ASSUME_UNIFORM_SCALING
@@ -191,7 +187,7 @@ real3x3 CreateTangentToWorld(real3 normal, real3 tangent, real flipSign)
 
     return real3x3(tangent, bitangent, normal);
 }
-// 1st
+// 将法线从切线空间变换到世界空间
 real3 TransformTangentToWorld(real3 dirTS, real3x3 tangentToWorld)
 {
     // Note matrix is in row major convention with left multiplication as it is build on the fly

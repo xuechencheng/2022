@@ -28,11 +28,11 @@ float4 _SourceSize;
 #if defined(SHADER_API_GLES) && !defined(SHADER_API_GLES3)
     #define SAMPLE_COUNT 3
 #else
-    #define SAMPLE_COUNT _SSAOParams.w
+    #define SAMPLE_COUNT _SSAOParams.w // 1 or 1 / 2
 #endif
 
 // Function defines
-#define SCREEN_PARAMS        GetScaledScreenParams()
+#define SCREEN_PARAMS        GetScaledScreenParams()//scaledCameraWidth scaledCameraHeight
 #define SAMPLE_BASEMAP(uv)   SAMPLE_TEXTURE2D_X(_BaseMap, sampler_BaseMap, UnityStereoTransformScreenSpaceTex(uv));
 #define SAMPLE_BASEMAP_R(uv) SAMPLE_TEXTURE2D_X(_BaseMap, sampler_BaseMap, UnityStereoTransformScreenSpaceTex(uv)).r;
 
@@ -75,10 +75,10 @@ float EncodeAO(float x)
         return x;
     #endif
 }
-
+//返回[0.8, 1]
 float CompareNormal(float3 d1, float3 d2)
 {
-    return smoothstep(kGeometryCoeff, 1.0, dot(d1, d2));
+    return smoothstep(kGeometryCoeff, 1.0, dot(d1, d2));//0.8
 }
 
 float2 GetScreenSpacePosition(float2 uv)
@@ -105,10 +105,10 @@ float UVRandom(float u, float v)
 float3 PickSamplePoint(float2 uv, float randAddon, int index)
 {
     float2 positionSS = GetScreenSpacePosition(uv);
-    float gn = InterleavedGradientNoise(positionSS, index);
-    float u = frac(UVRandom(0.0, index + randAddon) + gn) * 2.0 - 1.0;
+    float gn = InterleavedGradientNoise(positionSS, index);//noise [0, 1)
+    float u = frac(UVRandom(0.0, index + randAddon) + gn) * 2.0 - 1.0;// u ∈ [-1, 1]
     float theta = (UVRandom(1.0, index + randAddon) + gn) * TWO_PI;
-    return float3(CosSin(theta) * sqrt(1.0 - u * u), u);
+    return float3(CosSin(theta) * sqrt(1.0 - u * u), u);//cos(theta), sin(theta), u
 }
 
 float RawToLinearDepth(float rawDepth)
@@ -123,19 +123,19 @@ float RawToLinearDepth(float rawDepth)
         return LinearEyeDepth(rawDepth, _ZBufferParams);
     #endif
 }
-// ???
+// 获取LinearEyeDepth
 float SampleAndGetLinearDepth(float2 uv)
 {
     float rawDepth = SampleSceneDepth(uv.xy).r;
     return RawToLinearDepth(rawDepth);
 }
-
+//获取观察空间的位置
 float3 ReconstructViewPos(float2 uv, float depth, float2 p11_22, float2 p13_31)
 {
     #if defined(_ORTHOGRAPHIC)
         float3 viewPos = float3(((uv.xy * 2.0 - 1.0 - p13_31) * p11_22), depth);
     #else
-        float3 viewPos = float3(depth * ((uv.xy * 2.0 - 1.0 - p13_31) * p11_22), depth);
+        float3 viewPos = float3(depth * ((uv.xy * 2.0 - 1.0 - p13_31) * p11_22), depth);//p11_22 rcp
     #endif
     return viewPos;
 }
@@ -146,6 +146,7 @@ float3 ReconstructViewPos(float2 uv, float depth, float2 p11_22, float2 p13_31)
 // High:   5 taps on each direction: | z | x | * | y | w |
 // https://atyuwen.github.io/posts/normal-reconstruction/
 // https://wickedengine.net/2019/09/22/improved-normal-reconstruction-from-depth/
+// Todo
 float3 ReconstructNormal(float2 uv, float depth, float3 vpos, float2 p11_22, float2 p13_31)
 {
     #if defined(_RECONSTRUCT_NORMAL_LOW)
@@ -208,12 +209,11 @@ float3 ReconstructNormal(float2 uv, float depth, float3 vpos, float2 p11_22, flo
         return normalize(cross(P2 - vpos, P1 - vpos));
     #endif
 }
-//???
+//获取深度值，观察空间坐标和法线
 void SampleDepthNormalView(float2 uv, float2 p11_22, float2 p13_31, out float depth, out float3 normal, out float3 vpos)
 {
     depth  = SampleAndGetLinearDepth(uv);
     vpos = ReconstructViewPos(uv, depth, p11_22, p13_31);
-
     #if defined(_SOURCE_DEPTH_NORMALS)
         normal = SampleSceneNormals(uv);
     #else
@@ -224,10 +224,8 @@ void SampleDepthNormalView(float2 uv, float2 p11_22, float2 p13_31, out float de
 float3x3 GetCoordinateConversionParameters(out float2 p11_22, out float2 p13_31)
 {
     float3x3 camProj = (float3x3)unity_CameraProjection;
-
     p11_22 = rcp(float2(camProj._11, camProj._22));
     p13_31 = float2(camProj._13, camProj._23);
-
     return camProj;
 }
 
@@ -246,11 +244,9 @@ float4 SSAO(Varyings input) : SV_Target
     float3 norm_o;
     float3 vpos_o;
     SampleDepthNormalView(uv, p11_22, p13_31, depth_o, norm_o, vpos_o);
-
     // This was added to avoid a NVIDIA driver issue.
     float randAddon = uv.x * 1e-10;
-
-    float rcpSampleCount = rcp(SAMPLE_COUNT);
+    float rcpSampleCount = rcp(SAMPLE_COUNT);// SAMPLE_COUNT = 1 or 2 or 3
     float ao = 0.0;
     for (int s = 0; s < int(SAMPLE_COUNT); s++)
     {
@@ -258,43 +254,33 @@ float4 SSAO(Varyings input) : SV_Target
             // This 'floor(1.0001 * s)' operation is needed to avoid a DX11 NVidia shader issue.
             s = floor(1.0001 * s);
         #endif
-
-        // Sample point
+        // Sample point 选取采样点  
         float3 v_s1 = PickSamplePoint(uv, randAddon, s);
-
         // Make it distributed between [0, _Radius]
-        v_s1 *= sqrt((s + 1.0) * rcpSampleCount ) * RADIUS;
-
-        v_s1 = faceforward(v_s1, -norm_o, v_s1);
+        v_s1 *= sqrt((s + 1.0) * rcpSampleCount ) * RADIUS;//
+        v_s1 = faceforward(v_s1, -norm_o, v_s1);//faceforward(N,I,Ng) : 如果dot(Ng, I)< 0 ，返回 N；否则返回-N。 v_s1跟法线方向相反
         float3 vpos_s1 = vpos_o + v_s1;
-
         // Reproject the sample point
-        float3 spos_s1 = mul(camProj, vpos_s1);
+        float3 spos_s1 = mul(camProj, vpos_s1);//其次裁剪空间的采样点
         #if defined(_ORTHOGRAPHIC)
             float2 uv_s1_01 = clamp((spos_s1.xy + 1.0) * 0.5, 0.0, 1.0);
         #else
-            float2 uv_s1_01 = clamp((spos_s1.xy * rcp(vpos_s1.z) + 1.0) * 0.5, 0.0, 1.0);
+            float2 uv_s1_01 = clamp((spos_s1.xy * rcp(vpos_s1.z) + 1.0) * 0.5, 0.0, 1.0);//屏幕空间坐标
         #endif
-
         // Depth at the sample point
         float depth_s1 = SampleAndGetLinearDepth(uv_s1_01);
-
         // Relative position of the sample point
-        float3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1, p11_22, p13_31);
-        float3 v_s2 = vpos_s2 - vpos_o;
-
+        float3 vpos_s2 = ReconstructViewPos(uv_s1_01, depth_s1, p11_22, p13_31);//观察空间坐标
+        float3 v_s2 = vpos_s2 - vpos_o;//观察空间向量差
         // Estimate the obscurance value
-        float a1 = max(dot(v_s2, norm_o) - kBeta * depth_o, 0.0);
+        float a1 = max(dot(v_s2, norm_o) - kBeta * depth_o, 0.0);//skBeta = 0.002;EPSILON = 1.0e-4 0.0001
         float a2 = dot(v_s2, v_s2) + EPSILON;
-        ao += a1 * rcp(a2);
+        ao += a1 * rcp(a2);// 
     }
-
     // Intensity normalization
     ao *= RADIUS;
-
     // Apply contrast
     ao = PositivePow(ao * INTENSITY * rcpSampleCount, kContrast);
-
     return PackAONormal(ao, norm_o);
 }
 
@@ -306,7 +292,6 @@ half4 Blur(float2 uv, float2 delta) : SV_Target
     float4 p1b = SAMPLE_BASEMAP(uv + delta * 1.3846153846);
     float4 p2a = SAMPLE_BASEMAP(uv - delta * 3.2307692308);
     float4 p2b = SAMPLE_BASEMAP(uv + delta * 3.2307692308);
-
     #if defined(BLUR_SAMPLE_CENTER_NORMAL)
         #if defined(_SOURCE_DEPTH_NORMALS)
             float3 n0 = SampleSceneNormals(uv);
@@ -323,22 +308,18 @@ half4 Blur(float2 uv, float2 delta) : SV_Target
     #else
         float3 n0 = GetPackedNormal(p0);
     #endif
-
     float w0  =                                           0.2270270270;
     float w1a = CompareNormal(n0, GetPackedNormal(p1a)) * 0.3162162162;
     float w1b = CompareNormal(n0, GetPackedNormal(p1b)) * 0.3162162162;
     float w2a = CompareNormal(n0, GetPackedNormal(p2a)) * 0.0702702703;
     float w2b = CompareNormal(n0, GetPackedNormal(p2b)) * 0.0702702703;
-
     float s;
     s  = GetPackedAO(p0)  * w0;
     s += GetPackedAO(p1a) * w1a;
     s += GetPackedAO(p1b) * w1b;
     s += GetPackedAO(p2a) * w2a;
     s += GetPackedAO(p2b) * w2b;
-
     s *= rcp(w0 + w1a + w1b + w2a + w2b);
-
     return PackAONormal(s, n0);
 }
 
@@ -350,29 +331,24 @@ float BlurSmall(float2 uv, float2 delta)
     float4 p2 = SAMPLE_BASEMAP(uv + float2( delta.x, -delta.y));
     float4 p3 = SAMPLE_BASEMAP(uv + float2(-delta.x,  delta.y));
     float4 p4 = SAMPLE_BASEMAP(uv + float2( delta.x,  delta.y));
-
     float3 n0 = GetPackedNormal(p0);
-
     float w0 = 1.0;
     float w1 = CompareNormal(n0, GetPackedNormal(p1));
     float w2 = CompareNormal(n0, GetPackedNormal(p2));
     float w3 = CompareNormal(n0, GetPackedNormal(p3));
     float w4 = CompareNormal(n0, GetPackedNormal(p4));
-
     float s;
     s  = GetPackedAO(p0) * w0;
     s += GetPackedAO(p1) * w1;
     s += GetPackedAO(p2) * w2;
     s += GetPackedAO(p3) * w3;
     s += GetPackedAO(p4) * w4;
-
     return s *= rcp(w0 + w1 + w2 + w3 + w4);
 }
 
 half4 HorizontalBlur(Varyings input) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
     float2 uv = input.uv;
     float2 delta = float2(_SourceSize.z * rcp(DOWNSAMPLE) * 2.0, 0.0);
     return Blur(uv, delta);

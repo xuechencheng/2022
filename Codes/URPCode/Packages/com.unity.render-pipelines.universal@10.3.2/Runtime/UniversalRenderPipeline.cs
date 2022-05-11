@@ -297,7 +297,7 @@ namespace UnityEngine.Rendering.Universal
             RenderSingleCamera(context, cameraData, cameraData.postProcessEnabled);
         }
         /// <summary>
-        /// 裁剪
+        /// 裁剪 Done
         /// </summary>
         static bool TryGetCullingParameters(CameraData cameraData, out ScriptableCullingParameters cullingParams)
         {
@@ -313,12 +313,11 @@ namespace UnityEngine.Rendering.Universal
                 return true;
             }
 #endif
-
             return cameraData.camera.TryGetCullingParameters(false, out cullingParams);
         }
 
         /// <summary>
-        /// 渲染单个相机
+        /// 渲染单个相机 Done
         /// </summary>
         static void RenderSingleCamera(ScriptableRenderContext context, CameraData cameraData, bool anyPostProcessingEnabled)
         {
@@ -529,7 +528,7 @@ namespace UnityEngine.Rendering.Universal
             #endregion
         }
         /// <summary>
-        /// 使用Volumes进行属性插值
+        /// 使用Volumes进行属性插值 Done
         /// </summary>
         static void UpdateVolumeFramework(Camera camera, UniversalAdditionalCameraData additionalCameraData)
         {
@@ -551,7 +550,7 @@ namespace UnityEngine.Rendering.Universal
             }
             VolumeManager.instance.Update(trigger, layerMask);
         }
-        //First Done
+        //检测后处理是否需要深度图 Done
         static bool CheckPostProcessForDepth(in CameraData cameraData)
         {
             if (!cameraData.postProcessEnabled)
@@ -597,7 +596,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 初始化CameraData信息：Environment，Post-processing和output
+        /// 初始化CameraData信息 Done
         /// </summary>
         static void InitializeStackedCameraData(Camera baseCamera, UniversalAdditionalCameraData baseAdditionalCameraData, ref CameraData cameraData)
         {
@@ -693,7 +692,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 初始化相机数据
+        /// 初始化相机数据 Done
         /// </summary>
         static void InitializeAdditionalCameraData(Camera camera, UniversalAdditionalCameraData additionalCameraData, bool resolveFinalTarget, ref CameraData cameraData)
         {
@@ -705,7 +704,6 @@ namespace UnityEngine.Rendering.Universal
             bool anyShadowsEnabled = settings.supportsMainLightShadows || settings.supportsAdditionalLightShadows;
             cameraData.maxShadowDistance = Mathf.Min(settings.shadowDistance, camera.farClipPlane);
             cameraData.maxShadowDistance = (anyShadowsEnabled && cameraData.maxShadowDistance >= camera.nearClipPlane) ? cameraData.maxShadowDistance : 0.0f;
-
             bool isSceneViewCamera = cameraData.isSceneViewCamera;
             if (isSceneViewCamera)
             {
@@ -762,7 +760,7 @@ namespace UnityEngine.Rendering.Universal
             cameraData.SetViewAndProjectionMatrix(camera.worldToCameraMatrix, projectionMatrix);
         }
         /// <summary>
-        /// 初始化渲染数据，主要是灯光，阴影和后处理
+        /// 初始化渲染数据，主要是灯光，阴影和后处理 Done
         /// </summary>
         static void InitializeRenderingData(UniversalRenderPipelineAsset settings, ref CameraData cameraData, ref CullingResults cullResults,
             bool anyPostProcessingEnabled, out RenderingData renderingData)
@@ -802,7 +800,7 @@ namespace UnityEngine.Rendering.Universal
             renderingData.postProcessingEnabled = anyPostProcessingEnabled;
         }
         /// <summary>
-        /// 初始化阴影数据
+        /// 初始化阴影数据 Done
         /// </summary>
         static void InitializeShadowData(UniversalRenderPipelineAsset settings, NativeArray<VisibleLight> visibleLights, bool mainLightCastShadows, bool additionalLightsCastShadows, out ShadowData shadowData)
         {
@@ -849,14 +847,14 @@ namespace UnityEngine.Rendering.Universal
             shadowData.supportsSoftShadows = settings.supportsSoftShadows && (shadowData.supportsMainLightShadows || shadowData.supportsAdditionalLightShadows);
             shadowData.shadowmapDepthBufferBits = 16;
         }
-
+        // Done
         static void InitializePostProcessingData(UniversalRenderPipelineAsset settings, out PostProcessingData postProcessingData)
         {
             postProcessingData.gradingMode = settings.supportsHDR ? settings.colorGradingMode : ColorGradingMode.LowDynamicRange;
             postProcessingData.lutSize = settings.colorGradingLutSize;
         }
         /// <summary>
-        /// 初始化光照信息
+        /// 初始化光照信息 Done
         /// </summary>
         static void InitializeLightData(UniversalRenderPipelineAsset settings, NativeArray<VisibleLight> visibleLights, int mainLightIndex, out LightData lightData)
         {
@@ -879,7 +877,7 @@ namespace UnityEngine.Rendering.Universal
             lightData.supportsMixedLighting = settings.supportsMixedLighting;
         }
         /// <summary>
-        /// 获取PerObjectData配置
+        /// 获取PerObjectData配置 Done
         /// </summary>
         static PerObjectData GetPerObjectLightFlags(int additionalLightsCount)
         {
@@ -896,7 +894,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 获取主光源
+        /// 获取主光源 Done
         /// </summary>
         static int GetMainLightIndex(UniversalRenderPipelineAsset settings, NativeArray<VisibleLight> visibleLights)
         {

@@ -339,7 +339,7 @@ namespace UnityEngine.Rendering.Universal
             base.OnDisable();
         }
         /// <summary>
-        /// 根据ScriptableRendererData[]创建ScriptableRenderer[]
+        /// 根据ScriptableRendererData[]创建ScriptableRenderer[] Done
         /// </summary>
         void CreateRenderers()
         {
@@ -407,7 +407,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 获取ScriptableRenderer
+        /// 获取ScriptableRenderer Done
         /// </summary>
         public ScriptableRenderer GetRenderer(int index)
         {
@@ -909,7 +909,7 @@ namespace UnityEngine.Rendering.Universal
             return emptyEntries != m_RendererDataList.Length;
         }
         /// <summary>
-        /// 判断RendererData的索引是否合法
+        /// 判断RendererData的索引是否合法 Done
         /// </summary>
         internal bool ValidateRendererData(int index)
         {

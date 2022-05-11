@@ -460,7 +460,6 @@ namespace UnityEngine.Rendering.Universal.Internal
             var pixelRect = cameraData.pixelRect;
             var material = m_Materials.subpixelMorphologicalAntialiasing;
             const int kStencilBit = 64;
-
             // Globals
             material.SetVector(ShaderConstants._Metrics, new Vector4(1f / m_Descriptor.width, 1f / m_Descriptor.height, m_Descriptor.width, m_Descriptor.height));
             material.SetTexture(ShaderConstants._AreaTexture, m_Data.textures.smaaAreaTex);
@@ -546,53 +545,42 @@ namespace UnityEngine.Rendering.Universal.Internal
             int hh = m_Descriptor.height / downSample;
             float farStart = m_DepthOfField.gaussianStart.value;
             float farEnd = Mathf.Max(farStart, m_DepthOfField.gaussianEnd.value);
-
             // Assumes a radius of 1 is 1 at 1080p
             // Past a certain radius our gaussian kernel will look very bad so we'll clamp it for
             // very high resolutions (4K+).
-            float maxRadius = m_DepthOfField.gaussianMaxRadius.value * (wh / 1080f);
-            maxRadius = Mathf.Min(maxRadius, 2f);
-
+            float maxRadius = m_DepthOfField.gaussianMaxRadius.value * (wh / 1080f);//gaussianMaxRadius∈[0.5, 1.5]
+            maxRadius = Mathf.Min(maxRadius, 2f);//maxRadius∈[0.5, 2]
             CoreUtils.SetKeyword(material, ShaderKeywordStrings.HighQualitySampling, m_DepthOfField.highQualitySampling.value);
             material.SetVector(ShaderConstants._CoCParams, new Vector3(farStart, farEnd, maxRadius));
-
             // Temporary textures
             cmd.GetTemporaryRT(ShaderConstants._FullCoCTexture, GetCompatibleDescriptor(m_Descriptor.width, m_Descriptor.height, m_GaussianCoCFormat), FilterMode.Bilinear);
             cmd.GetTemporaryRT(ShaderConstants._HalfCoCTexture, GetCompatibleDescriptor(wh, hh, m_GaussianCoCFormat), FilterMode.Bilinear);
             cmd.GetTemporaryRT(ShaderConstants._PingTexture, GetCompatibleDescriptor(wh, hh, m_DefaultHDRFormat), FilterMode.Bilinear);
             cmd.GetTemporaryRT(ShaderConstants._PongTexture, GetCompatibleDescriptor(wh, hh, m_DefaultHDRFormat), FilterMode.Bilinear);
             // Note: fresh temporary RTs don't require explicit RenderBufferLoadAction.DontCare, only when they are reused (such as PingTexture)
-
             PostProcessUtils.SetSourceSize(cmd, m_Descriptor);
             cmd.SetGlobalVector(ShaderConstants._DownSampleScaleFactor, new Vector4(1.0f / downSample, 1.0f / downSample, downSample, downSample));
-
             // Compute CoC 
             //saturate((depth - FarStart) / (FarEnd - FarStart))
             Blit(cmd, source, ShaderConstants._FullCoCTexture, material, 0);
-
             // Downscale & prefilter color + coc
             m_MRT2[0] = ShaderConstants._HalfCoCTexture;
             m_MRT2[1] = ShaderConstants._PingTexture;
-
-            cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
+            cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);//???
             cmd.SetViewport(pixelRect);
             cmd.SetGlobalTexture(ShaderConstants._ColorTexture, source);
             cmd.SetGlobalTexture(ShaderConstants._FullCoCTexture, ShaderConstants._FullCoCTexture);
             cmd.SetRenderTarget(m_MRT2, ShaderConstants._HalfCoCTexture, 0, CubemapFace.Unknown, -1);//???
             DrawFullscreenMesh(cmd, material, 1);
-
             cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
-
             // Blur
             cmd.SetGlobalTexture(ShaderConstants._HalfCoCTexture, ShaderConstants._HalfCoCTexture);
             Blit(cmd, ShaderConstants._PingTexture, ShaderConstants._PongTexture, material, 2);
             Blit(cmd, ShaderConstants._PongTexture, BlitDstDiscardContent(cmd, ShaderConstants._PingTexture), material, 3);
-
             // Composite
             cmd.SetGlobalTexture(ShaderConstants._ColorTexture, ShaderConstants._PingTexture);
             cmd.SetGlobalTexture(ShaderConstants._FullCoCTexture, ShaderConstants._FullCoCTexture);
             Blit(cmd, source, BlitDstDiscardContent(cmd, destination), material, 4);
-
             // Cleanup
             cmd.ReleaseTemporaryRT(ShaderConstants._FullCoCTexture);
             cmd.ReleaseTemporaryRT(ShaderConstants._HalfCoCTexture);
@@ -600,34 +588,29 @@ namespace UnityEngine.Rendering.Universal.Internal
             cmd.ReleaseTemporaryRT(ShaderConstants._PongTexture);
         }
 
-        void PrepareBokehKernel()
+        void PrepareBokehKernel()//虚化???
         {
             const int kRings = 4;
             const int kPointsPerRing = 7;
-
             // Check the existing array
             if (m_BokehKernel == null)
                 m_BokehKernel = new Vector4[42];
-
             // Fill in sample points (concentric circles transformed to rotated N-Gon)
             int idx = 0;
-            float bladeCount = m_DepthOfField.bladeCount.value;
-            float curvature = 1f - m_DepthOfField.bladeCurvature.value;
-            float rotation = m_DepthOfField.bladeRotation.value * Mathf.Deg2Rad;
+            float bladeCount = m_DepthOfField.bladeCount.value;//[3, 9]
+            float curvature = 1f - m_DepthOfField.bladeCurvature.value;//[-1,1]
+            float rotation = m_DepthOfField.bladeRotation.value * Mathf.Deg2Rad;//bladeRotation [-180,180]
             const float PI = Mathf.PI;
             const float TWO_PI = Mathf.PI * 2f;
-
-            for (int ring = 1; ring < kRings; ring++)
+            for (int ring = 1; ring < kRings; ring++)//ring 1,2,3
             {
-                float bias = 1f / kPointsPerRing;
-                float radius = (ring + bias) / (kRings - 1f + bias);
-                int points = ring * kPointsPerRing;
-
+                float bias = 1f / kPointsPerRing;// 1/7
+                float radius = (ring + bias) / (kRings - 1f + bias);// 8 / 22  15 / 22  22 / 22
+                int points = ring * kPointsPerRing;// 7 * i 每个环上取7 * i个点
                 for (int point = 0; point < points; point++)
                 {
                     // Angle on ring
-                    float phi = 2f * PI * point / points;
-
+                    float phi = 2f * PI * point / points;// 遍历环上的点
                     // Transform to rotated N-Gon
                     // Adapted from "CryEngine 3 Graphics Gems" [Sousa13]
                     float nt = Mathf.Cos(PI / bladeCount);
@@ -635,8 +618,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                     float r = radius * Mathf.Pow(nt / dt, curvature);
                     float u = r * Mathf.Cos(phi - rotation);
                     float v = r * Mathf.Sin(phi - rotation);
-
-                    m_BokehKernel[idx] = new Vector4(u, v);
+                    m_BokehKernel[idx] = new Vector4(u, v);//u, v ∈ [-1， 1]
                     idx++;
                 }
             }
@@ -647,7 +629,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             // Estimate the maximum radius of bokeh (empirically derived from the ring count)
             const float kRadiusInPixels = 14f;
-            return Mathf.Min(0.05f, kRadiusInPixels / viewportHeight);
+            return Mathf.Min(0.05f, kRadiusInPixels / viewportHeight);//当viewportHeight > 280时，返回0.05
         }
 
         void DoBokehDepthOfField(CommandBuffer cmd, int source, int destination, Rect pixelRect)
@@ -656,17 +638,14 @@ namespace UnityEngine.Rendering.Universal.Internal
             var material = m_Materials.bokehDepthOfField;
             int wh = m_Descriptor.width / downSample;
             int hh = m_Descriptor.height / downSample;
-
             // "A Lens and Aperture Camera Model for Synthetic Image Generation" [Potmesil81]
-            float F = m_DepthOfField.focalLength.value / 1000f;
-            float A = m_DepthOfField.focalLength.value / m_DepthOfField.aperture.value;
-            float P = m_DepthOfField.focusDistance.value;
-            float maxCoC = (A * F) / (P - F);
-            float maxRadius = GetMaxBokehRadiusInPixels(m_Descriptor.height);
-            float rcpAspect = 1f / (wh / (float)hh);
-
+            float F = m_DepthOfField.focalLength.value / 1000f;//focalLength焦长 [ 1, 300] f
+            float A = m_DepthOfField.focalLength.value / m_DepthOfField.aperture.value;//光圈 [1, 32] f / F
+            float P = m_DepthOfField.focusDistance.value;//焦点距离[0.1, ∞] L
+            float maxCoC = (A * F) / (P - F);//maxCoC越大，景深越小 ???
+            float maxRadius = GetMaxBokehRadiusInPixels(m_Descriptor.height);//0.05
+            float rcpAspect = 1f / (wh / (float)hh);// height / width
             cmd.SetGlobalVector(ShaderConstants._CoCParams, new Vector4(P, maxCoC, maxRadius, rcpAspect));
-
             // Prepare the bokeh kernel constant buffer
             int hash = m_DepthOfField.GetHashCode();
             if (hash != m_BokehHash)
@@ -674,34 +653,25 @@ namespace UnityEngine.Rendering.Universal.Internal
                 m_BokehHash = hash;
                 PrepareBokehKernel();
             }
-
             cmd.SetGlobalVectorArray(ShaderConstants._BokehKernel, m_BokehKernel);
-
             // Temporary textures
             cmd.GetTemporaryRT(ShaderConstants._FullCoCTexture, GetCompatibleDescriptor(m_Descriptor.width, m_Descriptor.height, GraphicsFormat.R8_UNorm), FilterMode.Bilinear);
             cmd.GetTemporaryRT(ShaderConstants._PingTexture, GetCompatibleDescriptor(wh, hh, GraphicsFormat.R16G16B16A16_SFloat), FilterMode.Bilinear);
             cmd.GetTemporaryRT(ShaderConstants._PongTexture, GetCompatibleDescriptor(wh, hh, GraphicsFormat.R16G16B16A16_SFloat), FilterMode.Bilinear);
-
             PostProcessUtils.SetSourceSize(cmd, m_Descriptor);
             cmd.SetGlobalVector(ShaderConstants._DownSampleScaleFactor, new Vector4(1.0f / downSample, 1.0f / downSample, downSample, downSample));
-
             // Compute CoC
             Blit(cmd, source, ShaderConstants._FullCoCTexture, material, 0);
             cmd.SetGlobalTexture(ShaderConstants._FullCoCTexture, ShaderConstants._FullCoCTexture);
-
             // Downscale & prefilter color + coc
             Blit(cmd, source, ShaderConstants._PingTexture, material, 1);
-
             // Bokeh blur
             Blit(cmd, ShaderConstants._PingTexture, ShaderConstants._PongTexture, material, 2);
-
             // Post-filtering
             Blit(cmd, ShaderConstants._PongTexture, BlitDstDiscardContent(cmd, ShaderConstants._PingTexture), material, 3);
-
             // Composite
             cmd.SetGlobalTexture(ShaderConstants._DofTexture, ShaderConstants._PingTexture);
             Blit(cmd, source, BlitDstDiscardContent(cmd, destination), material, 4);
-
             // Cleanup
             cmd.ReleaseTemporaryRT(ShaderConstants._FullCoCTexture);
             cmd.ReleaseTemporaryRT(ShaderConstants._PingTexture);
@@ -797,14 +767,13 @@ namespace UnityEngine.Rendering.Universal.Internal
             Blit(cmd, source, BlitDstDiscardContent(cmd, destination), material);
         }
 
+        // (Mathf.Tan(0.5f * fovY), aspect * Mathf.Tan(0.5f * fovY))
         Vector2 CalcViewExtents(Camera camera)
         {
             float fovY = camera.fieldOfView * Mathf.Deg2Rad;
             float aspect = m_Descriptor.width / (float)m_Descriptor.height;
-
             float viewExtY = Mathf.Tan(0.5f * fovY);
             float viewExtX = aspect * viewExtY;
-
             return new Vector2(viewExtX, viewExtY);
         }
 
@@ -831,16 +800,12 @@ namespace UnityEngine.Rendering.Universal.Internal
             //
             // have X
             // want to find E
-
             float viewDist = 1f + d;
-
             var projPos = CalcViewExtents(camera);
             var projHyp = Mathf.Sqrt(projPos.x * projPos.x + 1f);
-
             float cylDistMinusD = 1f / projHyp;
             float cylDist = cylDistMinusD + d;
             var cylPos = projPos * cylDistMinusD;
-
             return cylPos * (viewDist / cylDist);
         }
 

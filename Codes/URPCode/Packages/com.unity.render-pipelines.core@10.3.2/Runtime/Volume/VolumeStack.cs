@@ -13,7 +13,7 @@ namespace UnityEngine.Rendering
         {
         }
         /// <summary>
-        /// 用baseTypes的实例来初始化components
+        /// 用baseTypes的实例来初始化components Done
         /// </summary>
         /// <param name="baseTypes"></param>
         internal void Reload(IEnumerable<Type> baseTypes)

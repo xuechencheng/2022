@@ -17,7 +17,7 @@ namespace UnityEngine.Rendering
     public static class ResourceReloader
     {
         /// <summary>
-        /// 初始化ReloadGroup标签的类中，含有Reload标签的字段。
+        /// 初始化ReloadGroup标签的类中，含有Reload标签的字段。Done
         /// </summary>
         public static (bool hasChange, bool assetDatabaseNotReady) TryReloadAllNullIn(System.Object container, string basePath)
         {
@@ -35,7 +35,7 @@ namespace UnityEngine.Rendering
 
 
         /// <summary>
-        /// 初始化ReloadGroup标签的类中，含有Reload标签的字段。
+        /// 初始化ReloadGroup标签的类中，含有Reload标签的字段。 Done
         /// </summary>
         public static bool ReloadAllNullIn(System.Object container, string basePath)
         {
@@ -83,7 +83,7 @@ namespace UnityEngine.Rendering
         }
 
         /// <summary>
-        /// 如果FieldInfo为空，实例化一个FieldInfo，赋给container
+        /// 如果FieldInfo为空，实例化一个FieldInfo，赋给container Done
         /// </summary>
         static bool FixGroupIfNeeded(System.Object container, FieldInfo info)
         {
@@ -98,7 +98,7 @@ namespace UnityEngine.Rendering
         }
 
         /// <summary>
-        /// 按需创建并赋值数组元素
+        /// 按需创建并赋值数组元素 Done
         /// </summary>
         static bool FixGroupIfNeeded(Array array, int index)
         {
@@ -113,7 +113,7 @@ namespace UnityEngine.Rendering
             return false;
         }
         /// <summary>
-        /// 按需创建FieldInfo数组并赋值
+        /// 按需创建FieldInfo数组并赋值 Done
         /// </summary>
         static bool FixArrayIfNeeded(System.Object container, FieldInfo info, int length)
         {
@@ -125,7 +125,7 @@ namespace UnityEngine.Rendering
             return false;
         }
         /// <summary>
-        /// 获取含有Reload标签的属性
+        /// 获取含有Reload标签的属性 Done
         /// </summary>
         static ReloadAttribute GetReloadAttribute(FieldInfo fieldInfo)
         {
@@ -136,7 +136,7 @@ namespace UnityEngine.Rendering
         }
 
         /// <summary>
-        /// ReloadGroup标签，通常修饰类
+        /// ReloadGroup标签，通常修饰类 Done
         /// </summary>
         static bool IsReloadGroup(FieldInfo info) => info.FieldType.GetCustomAttributes(typeof(ReloadGroupAttribute), false).Length > 0;
 
@@ -150,7 +150,7 @@ namespace UnityEngine.Rendering
         // Done
         static bool IsNull(System.Object field) => field == null || field.Equals(null);
         /// <summary>
-        /// Load Asset
+        /// Load Asset. Done
         /// </summary>
         static UnityEngine.Object Load(string path, Type type, bool builtin)
         {
@@ -172,7 +172,7 @@ namespace UnityEngine.Rendering
         }
 
         /// <summary>
-        /// 如果FieldInfo为空，就加载并设置它
+        /// 如果FieldInfo为空，就加载并设置它 Done
         /// </summary>
         static bool SetAndLoadIfNull(System.Object container, FieldInfo info, string path, bool builtin)
         {
@@ -198,7 +198,7 @@ namespace UnityEngine.Rendering
             return false;
         }
         /// <summary>
-        /// 获取路径
+        /// 获取路径 Done
         /// </summary>
         static string GetFullPath(string basePath, ReloadAttribute attribute, int index = 0)
         {

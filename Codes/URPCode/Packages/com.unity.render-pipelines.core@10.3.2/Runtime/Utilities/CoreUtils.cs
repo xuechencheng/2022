@@ -872,10 +872,6 @@ namespace UnityEngine.Rendering
                 cs.DisableKeyword(keyword);
         }
 
-        /// <summary>
-        /// Destroys a UnityObject safely.
-        /// </summary>
-        /// <param name="obj">Object to be destroyed.</param>
         /// Done
         public static void Destroy(UnityObject obj)
         {

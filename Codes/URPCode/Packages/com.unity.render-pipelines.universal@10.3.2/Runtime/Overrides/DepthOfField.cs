@@ -27,14 +27,14 @@ namespace UnityEngine.Rendering.Universal
         [Tooltip("Use higher quality sampling to reduce flickering and improve the overall blur smoothness.")]
         public BoolParameter highQualitySampling = new BoolParameter(false);
 
-        [Tooltip("The distance to the point of focus.")]
+        [Tooltip("The distance to the point of focus.")]//对焦距离L 正相关
         public MinFloatParameter focusDistance = new MinFloatParameter(10f, 0.1f);
 
         [Tooltip("The ratio of aperture (known as f-stop or f-number). The smaller the value is, the shallower the depth of field is.")]
-        public ClampedFloatParameter aperture = new ClampedFloatParameter(5.6f, 1f, 32f);
+        public ClampedFloatParameter aperture = new ClampedFloatParameter(5.6f, 1f, 32f);//F 光圈值 正相关
 
         [Tooltip("The distance between the lens and the film. The larger the value is, the shallower the depth of field is.")]
-        public ClampedFloatParameter focalLength = new ClampedFloatParameter(50f, 1f, 300f);
+        public ClampedFloatParameter focalLength = new ClampedFloatParameter(50f, 1f, 300f);//f镜头焦距 负相关
 
         [Tooltip("The number of aperture blades.")]
         public ClampedIntParameter bladeCount = new ClampedIntParameter(5, 3, 9);

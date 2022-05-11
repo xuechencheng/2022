@@ -317,13 +317,14 @@ void GetTriplanarCoordinate(float3 position, out float2 uvXZ, out float2 uvXY, o
 // ----------------------------------------------------------------------------
 // Helper for detail map operation
 // ----------------------------------------------------------------------------
-// Done t = 0 --> 1    t = 1 --> b
+// t = 0 --> 1    t = 1 --> b
+// 1 + (b - 1) * t
 real LerpWhiteTo(real b, real t)
 {
     real oneMinusT = 1.0 - t;
     return oneMinusT + b * t;
 }
-// Done
+
 real3 LerpWhiteTo(real3 b, real t)
 {
     real oneMinusT = 1.0 - t;

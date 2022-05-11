@@ -1,3 +1,4 @@
+
 using UnityEngine.Experimental.Rendering;
 
 namespace UnityEngine.Rendering.Universal.Internal
@@ -10,7 +11,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         readonly GraphicsFormat m_LdrLutFormat;
         RenderTargetHandle m_InternalLut;
         /// <summary>
-        /// 构造函数，初始化
+        /// 构造函数，初始化 Done
         /// </summary>
         public ColorGradingLutPass(RenderPassEvent evt, PostProcessData data)
         {

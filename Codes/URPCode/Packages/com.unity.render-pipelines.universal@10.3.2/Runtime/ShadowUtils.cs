@@ -36,14 +36,14 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 计算阴影变换，包围球等数据 ???
+        /// 填充ShadowSplitData数据(偏移，分辨率，投影变换) Done
         /// </summary>
         public static bool ExtractDirectionalLightMatrix(ref CullingResults cullResults, ref ShadowData shadowData, int shadowLightIndex, int cascadeIndex, int shadowmapWidth, int shadowmapHeight, int shadowResolution, float shadowNearPlane, out Vector4 cascadeSplitDistance, out ShadowSliceData shadowSliceData, out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix)
         {
             ShadowSplitData splitData;
             bool success = cullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(shadowLightIndex, cascadeIndex, shadowData.mainLightShadowCascadesCount, 
                 shadowData.mainLightShadowCascadesSplit, shadowResolution, shadowNearPlane, out viewMatrix, out projMatrix, out splitData);
-            cascadeSplitDistance = splitData.cullingSphere;//（x,y,z,r半径）
+            cascadeSplitDistance = splitData.cullingSphere;//（x, y, z, r）
             shadowSliceData.offsetX = (cascadeIndex % 2) * shadowResolution;
             shadowSliceData.offsetY = (cascadeIndex / 2) * shadowResolution;
             shadowSliceData.resolution = shadowResolution;
@@ -65,11 +65,12 @@ namespace UnityEngine.Rendering.Universal
             return success;
         }
         /// <summary>
-        /// 绘制阴影
+        /// 绘制阴影 Done
         /// </summary>
         public static void RenderShadowSlice(CommandBuffer cmd, ref ScriptableRenderContext context,
             ref ShadowSliceData shadowSliceData, ref ShadowDrawingSettings settings, Matrix4x4 proj, Matrix4x4 view)
         {
+            //将相机变换到灯光位置
             cmd.SetViewport(new Rect(shadowSliceData.offsetX, shadowSliceData.offsetY, shadowSliceData.resolution, shadowSliceData.resolution));
             cmd.SetViewProjectionMatrices(view, proj);
             context.ExecuteCommandBuffer(cmd);
@@ -87,7 +88,7 @@ namespace UnityEngine.Rendering.Universal
                 shadowSliceData.projectionMatrix, shadowSliceData.viewMatrix);
         }
         /// <summary>
-        /// 计算每块的分辨率
+        /// 计算每个级联块的分辨率 Done
         /// </summary>
         public static int GetMaxTileResolutionInAtlas(int atlasWidth, int atlasHeight, int tileCount)
         {
@@ -101,7 +102,7 @@ namespace UnityEngine.Rendering.Universal
             return resolution;
         }
         /// <summary>
-        /// 计算在图集中的位置 ???
+        /// 应用图集中的缩放和偏移变换 Done
         /// </summary>
         public static void ApplySliceTransform(ref ShadowSliceData shadowSliceData, int atlasWidth, int atlasHeight)
         {
@@ -112,10 +113,10 @@ namespace UnityEngine.Rendering.Universal
             sliceTransform.m11 = shadowSliceData.resolution * oneOverAtlasHeight;
             sliceTransform.m03 = shadowSliceData.offsetX * oneOverAtlasWidth;
             sliceTransform.m13 = shadowSliceData.offsetY * oneOverAtlasHeight;
-            // Apply shadow slice scale and offset
+            // Apply shadow slice scale and offset 缩放和偏移
             shadowSliceData.shadowTransform = sliceTransform * shadowSliceData.shadowTransform;
         }
-        // 计算深度偏移和法线偏移 ???
+        // 计算深度偏移和法线偏移 Done
         public static Vector4 GetShadowBias(ref VisibleLight shadowLight, int shadowLightIndex, ref ShadowData shadowData, Matrix4x4 lightProjectionMatrix, float shadowResolution)
         {
             if (shadowLightIndex < 0 || shadowLightIndex >= shadowData.bias.Count)
@@ -123,7 +124,6 @@ namespace UnityEngine.Rendering.Universal
                 Debug.LogWarning(string.Format("{0} is not a valid light index.", shadowLightIndex));
                 return Vector4.zero;
             }
-
             float frustumSize;
             if (shadowLight.lightType == LightType.Directional)
             {
@@ -145,12 +145,10 @@ namespace UnityEngine.Rendering.Universal
                 Debug.LogWarning("Only spot and directional shadow casters are supported in universal pipeline");
                 frustumSize = 0.0f;
             }
-
             // depth and normal bias scale is in shadowmap texel size in world space
             float texelSize = frustumSize / shadowResolution;
             float depthBias = -shadowData.bias[shadowLightIndex].x * texelSize;
             float normalBias = -shadowData.bias[shadowLightIndex].y * texelSize;
-
             if (shadowData.supportsSoftShadows)
             {
                 // TODO: depth and normal bias assume sample is no more than 1 texel away from shadowmap
@@ -162,18 +160,17 @@ namespace UnityEngine.Rendering.Universal
                 depthBias *= kernelRadius;
                 normalBias *= kernelRadius;
             }
-
             return new Vector4(depthBias, normalBias, 0.0f, 0.0f);
         }
-        // 设置_ShadowBias和_LightDirection
+        // 设置_ShadowBias和_LightDirection Done
         public static void SetupShadowCasterConstantBuffer(CommandBuffer cmd, ref VisibleLight shadowLight, Vector4 shadowBias)
         {
-            Vector3 lightDirection = -shadowLight.localToWorldMatrix.GetColumn(2);
+            Vector3 lightDirection = -shadowLight.localToWorldMatrix.GetColumn(2);//z轴方向
             cmd.SetGlobalVector("_ShadowBias", shadowBias);
             cmd.SetGlobalVector("_LightDirection", new Vector4(lightDirection.x, lightDirection.y, lightDirection.z, 0.0f));
         }
         /// <summary>
-        /// 获取阴影RT
+        /// 获取阴影RT Done
         /// </summary>
         public static RenderTexture GetTemporaryShadowTexture(int width, int height, int bits)
         {
@@ -183,7 +180,7 @@ namespace UnityEngine.Rendering.Universal
             return shadowTexture;
         }
         /// <summary>
-        /// 阴影变换矩阵 ???
+        /// 阴影变换矩阵 Done
         /// </summary>
         static Matrix4x4 GetShadowTransform(Matrix4x4 proj, Matrix4x4 view)
         {
@@ -196,9 +193,11 @@ namespace UnityEngine.Rendering.Universal
                 proj.m22 = -proj.m22;
                 proj.m23 = -proj.m23;
             }
-
             Matrix4x4 worldToShadow = proj * view;
-
+//          0.5 0   0   0.5
+//          0   0.5 0   0.5
+//          0   0   0.5 0.5
+//          0   0   0   1
             var textureScaleAndBias = Matrix4x4.identity;
             textureScaleAndBias.m00 = 0.5f;
             textureScaleAndBias.m11 = 0.5f;
@@ -206,9 +205,8 @@ namespace UnityEngine.Rendering.Universal
             textureScaleAndBias.m03 = 0.5f;
             textureScaleAndBias.m23 = 0.5f;
             textureScaleAndBias.m13 = 0.5f;
-
             // Apply texture scale and offset to save a MAD in shader.
-            return textureScaleAndBias * worldToShadow;
+            return textureScaleAndBias * worldToShadow;//
         }
     }
 }

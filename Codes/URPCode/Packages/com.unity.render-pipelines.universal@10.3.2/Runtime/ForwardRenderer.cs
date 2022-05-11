@@ -218,7 +218,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// Cleanup Pass数据，Destory材质
+        /// Cleanup Pass数据，Destory材质 Done
         /// </summary>
         /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
@@ -236,7 +236,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 设置需要渲染的Pass
+        /// 设置需要渲染的Pass Done
         /// </summary>
         public override void Setup(ScriptableRenderContext context, ref RenderingData renderingData)
         {
@@ -262,7 +262,6 @@ namespace UnityEngine.Rendering.Universal
                 EnqueuePass(m_RenderTransparentForwardPass);
                 return;
             }
-
             if (m_DeferredLights != null)
                 m_DeferredLights.ResolveMixedLightingMode(ref renderingData);
             // Assign the camera color target early in case it is needed during AddRenderPasses.
@@ -520,7 +519,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 设置剔除信息：阴影和灯光数量
+        /// 设置剔除信息：阴影和灯光数量 Done
         /// </summary>
         public override void SetupCullingParameters(ref ScriptableCullingParameters cullingParameters,
             ref CameraData cameraData)
@@ -608,7 +607,7 @@ namespace UnityEngine.Rendering.Universal
             internal bool requiresColorTexture;
         }
         /// <summary>
-        /// 设置需要的纹理信息:DepthTexture，DepthPrepass，NormalsTexture和ColorTexture
+        /// 设置需要的纹理信息:DepthTexture，DepthPrepass，NormalsTexture和ColorTexture Done
         /// </summary>
         /// <param name="renderingData"></param>
         /// <returns></returns>
@@ -631,7 +630,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 创建RT
+        /// 创建Depth Color RT Done
         /// </summary>
         void CreateCameraRenderTarget(ScriptableRenderContext context, ref RenderTextureDescriptor descriptor, bool createColor, bool createDepth)
         {
@@ -675,7 +674,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 是否创建中间Color Texture
+        /// 是否创建中间Color Texture Done
         /// </summary>
         bool RequiresIntermediateColorTexture(ref CameraData cameraData)
         {

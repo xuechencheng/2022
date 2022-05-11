@@ -82,7 +82,7 @@ TEXTURE2D(_ClearCoatMap);       SAMPLER(sampler_ClearCoatMap);
     #define SAMPLE_METALLICSPECULAR(uv) SAMPLE_TEXTURE2D(_MetallicGlossMap, sampler_MetallicGlossMap, uv)
 #endif
 
-// 获取金属度和光滑度 1st
+// 获取金属度和光滑度
 half4 SampleMetallicSpecGloss(float2 uv, half albedoAlpha)
 {
     half4 specGloss;
@@ -107,11 +107,10 @@ half4 SampleMetallicSpecGloss(float2 uv, half albedoAlpha)
 #endif
     return specGloss;
 }
-//采样AO贴图 1st
+//采样AO贴图
 half SampleOcclusion(float2 uv)
 {
 #ifdef _OCCLUSIONMAP
-    // TODO: Controls things like these by exposing SHADER_QUALITY levels (low, medium, high)
     #if defined(SHADER_API_GLES)
         return SAMPLE_TEXTURE2D(_OcclusionMap, sampler_OcclusionMap, uv).g;
     #else
@@ -196,7 +195,7 @@ half3 ApplyDetailNormal(float2 detailUv, half3 normalTS, half detailMask)
 #endif
 }
 
-// 1st
+// InitializeStandardLitSurfaceData
 inline void InitializeStandardLitSurfaceData(float2 uv, out SurfaceData outSurfaceData)
 {
     half4 albedoAlpha = SampleAlbedoAlpha(uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));

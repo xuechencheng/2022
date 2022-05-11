@@ -1,0 +1,36 @@
+int handle = pcopen( 0, 'P', @P, chf('radius'), chi('maxpoints'));
+int count = pcnumfound(handle);
+int ptnum = -1;
+vector sum = 0;
+for(int i = 0; i < count; i++){
+    pciterate(handle);
+    pcimport(handle, 'point.number', ptnum);
+    vector pos = point(0, 'P', ptnum);
+    sum += pos;
+}
+pcclose(handle);
+@P = sum / count;
+
+
+vector spherePos = point(1, 'P', 0);
+int handle = pcopen( 0, 'P', spherePos, chf('radius'), chi('maxpoints'));
+int ptnum = -1;
+float distance = 0;
+while(pciterate(handle)){
+    pcimport(0, 'point:number', ptnum);
+    pcimport(0, 'point:distance', distance);
+    if(distance > chf('radius') - 0.1){
+        vector pos = point(0, 'P', ptnum);
+        vector dir = normalize(pos - spherePos);
+        setpointattrib( 0, 'P', pos + dir * 0.07);
+    }
+}
+
+
+string spherePath = '../sphere2';
+vector spherePos = set(ch(spherePath + 'tx'), ch(spherePath + 'ty'), ch(spherePath + 'tz'));
+float dis = distance(@P, spherePos);
+float wave = sin(dis * 2 - @Frame * 0.15) * 0.5 + 0.5;
+float wave2 = sin(dis * 10 - @Frame * 0.1) * 0.5 + 0.5;
+float wave3 = sin(dis * 5 - @Frame * 0.2) * 0.5 + 1;
+@Cd = hsvtorgb(wave, wave2, wave3);

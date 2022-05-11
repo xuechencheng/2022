@@ -53,7 +53,7 @@ struct Varyings
     UNITY_VERTEX_INPUT_INSTANCE_ID
     UNITY_VERTEX_OUTPUT_STEREO
 };
-// 1st
+// InitializeInputData
 void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData)
 {
     inputData = (InputData)0;
@@ -88,7 +88,6 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
 //                  Vertex and Fragment functions                            //
 ///////////////////////////////////////////////////////////////////////////////
 
-// 1st
 Varyings LitPassVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
@@ -101,7 +100,6 @@ Varyings LitPassVertex(Attributes input)
     half3 vertexLight = VertexLighting(vertexInput.positionWS, normalInput.normalWS); 
     half fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
     output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-    // already normalized from normal transform to WS.
     output.normalWS = normalInput.normalWS;
     output.viewDirWS = viewDirWS;
 #if defined(REQUIRES_WORLD_SPACE_TANGENT_INTERPOLATOR) || defined(REQUIRES_TANGENT_SPACE_VIEW_DIR_INTERPOLATOR)
@@ -128,7 +126,6 @@ Varyings LitPassVertex(Attributes input)
     return output;
 }
 
-// Used in Standard (Physically Based) shader
 half4 LitPassFragment(Varyings input) : SV_Target
 {
     UNITY_SETUP_INSTANCE_ID(input);

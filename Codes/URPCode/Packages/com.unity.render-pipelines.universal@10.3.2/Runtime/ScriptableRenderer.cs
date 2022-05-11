@@ -44,7 +44,7 @@ namespace UnityEngine.Rendering.Universal
 
         internal static ScriptableRenderer current = null;
         /// <summary>
-        /// 设置Shader内矩阵信息
+        /// 设置Shader内矩阵信息 Done
         /// </summary>
         public static void SetCameraMatrices(CommandBuffer cmd, ref CameraData cameraData, bool setInverseMatrices)
         {
@@ -76,7 +76,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 设置Shader内相机变量
+        /// 设置Shader内相机变量 Done
         /// </summary>
         void SetPerCameraShaderVariables(CommandBuffer cmd, ref CameraData cameraData)
         {
@@ -113,9 +113,9 @@ namespace UnityEngine.Rendering.Universal
             // zc0 = (1.0 - far / near) / 2.0;
             // zc1 = (1.0 + far / near) / 2.0;
             // D3D is this:
-            float zc0 = 1.0f - far * invNear;
-            float zc1 = far * invNear;
-            Vector4 zBufferParams = new Vector4(zc0, zc1, zc0 * invFar, zc1 * invFar);
+            float zc0 = 1.0f - far * invNear;// 1 - f / r
+            float zc1 = far * invNear;// f / r
+            Vector4 zBufferParams = new Vector4(zc0, zc1, zc0 * invFar, zc1 * invFar);// 1 - f/r, f/r, (1 - f/r) / f, f/r/f
             if (SystemInfo.usesReversedZBuffer)
             {
                 zBufferParams.y += zBufferParams.x;
@@ -139,7 +139,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 设置Shader内的时间变量
+        /// 设置Shader内的时间变量 Done
         /// </summary>
         /// https://docs.unity3d.com/Manual/SL-UnityShaderVariables.html
         void SetShaderTimeValues(CommandBuffer cmd, float time, float deltaTime, float smoothDeltaTime)
@@ -277,6 +277,7 @@ namespace UnityEngine.Rendering.Universal
         protected virtual void Dispose(bool disposing)
         {
         }
+        // Done
         public void ConfigureCameraTarget(RenderTargetIdentifier colorTarget, RenderTargetIdentifier depthTarget)
         {
             m_CameraColorTarget = colorTarget;
@@ -302,7 +303,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 执行渲染Pass
+        /// 执行渲染Pass Done
         /// </summary>
         public void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
@@ -377,7 +378,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 把Pass加入到渲染队列
+        /// 把Pass加入到渲染队列 Done
         /// </summary>
         public void EnqueuePass(ScriptableRenderPass pass)
         {
@@ -400,7 +401,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 把RenderFeatures中的Pass添加到ScriptRenderder中
+        /// 把RenderFeatures中的Pass添加到ScriptRenderder中 Done
         /// </summary>
         protected void AddRenderPasses(ref RenderingData renderingData)
         {
@@ -423,7 +424,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// Disable ShaderKeywords
+        /// Disable ShaderKeywords Done
         /// </summary>
         void ClearRenderingState(CommandBuffer cmd)
         {
@@ -441,7 +442,7 @@ namespace UnityEngine.Rendering.Universal
         }
         
         /// <summary>
-        /// Clear
+        /// Clear Done
         /// </summary>
         internal void Clear(CameraRenderType cameraType)
         {
@@ -487,7 +488,7 @@ namespace UnityEngine.Rendering.Universal
             CommandBufferPool.Release(cmd);
             renderPass.Execute(context, ref renderingData);
         }
-        // ???
+        // Done
         void SetRenderPassAttachments(CommandBuffer cmd, ScriptableRenderPass renderPass, ref CameraData cameraData)
         {
             Camera camera = cameraData.camera;
@@ -690,7 +691,7 @@ namespace UnityEngine.Rendering.Universal
         }
 
         /// <summary>
-        /// 调用List<ScriptableRenderPass>的OnCameraSetup
+        /// 调用List<ScriptableRenderPass>的OnCameraSetup Done
         /// </summary>
         void InternalStartRendering(ScriptableRenderContext context, ref RenderingData renderingData)
         {
@@ -729,7 +730,7 @@ namespace UnityEngine.Rendering.Universal
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }
-        // 根据RenderPassEvent排序
+        // 根据RenderPassEvent排序 Done
         internal static void SortStable(List<ScriptableRenderPass> list)
         {
             int j;
@@ -746,7 +747,7 @@ namespace UnityEngine.Rendering.Universal
         internal struct RenderBlocks : IDisposable
         {
             private NativeArray<RenderPassEvent> m_BlockEventLimits;//长度为4的枚举
-            private NativeArray<int> m_BlockRanges; //存储ScriptableRenderPass的索引范围 长度为5
+            private NativeArray<int> m_BlockRanges; //存储ScriptableRenderPass的索引范围 长度为5 存储Pass范围索引，最后一个存总Pass数
             private NativeArray<int> m_BlockRangeLengths;//每个范围内的Pass数量 长度为5
             /// <summary>
             /// 构建块的Pass范围信息
@@ -754,9 +755,9 @@ namespace UnityEngine.Rendering.Universal
             /// <param name="activeRenderPassQueue"></param>
             public RenderBlocks(List<ScriptableRenderPass> activeRenderPassQueue)
             {
-                m_BlockEventLimits = new NativeArray<RenderPassEvent>(k_RenderPassBlockCount, Allocator.Temp);
-                m_BlockRanges = new NativeArray<int>(m_BlockEventLimits.Length + 1, Allocator.Temp);
-                m_BlockRangeLengths = new NativeArray<int>(m_BlockRanges.Length, Allocator.Temp);
+                m_BlockEventLimits = new NativeArray<RenderPassEvent>(k_RenderPassBlockCount, Allocator.Temp);// length = 4
+                m_BlockRanges = new NativeArray<int>(m_BlockEventLimits.Length + 1, Allocator.Temp);// length = 5
+                m_BlockRangeLengths = new NativeArray<int>(m_BlockRanges.Length, Allocator.Temp);// length = 5
                 //BeforeRendering -- BeforeRenderingShadows -- AfterRenderingShadows
                 m_BlockEventLimits[RenderPassBlock.BeforeRendering] = RenderPassEvent.BeforeRenderingPrepasses;
                 //BeforeRenderingPrepasses -- AfterRenderingPrePasses -- BeforeRenderingOpaques

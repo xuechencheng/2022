@@ -17,7 +17,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         bool m_IsOpaque;
         static readonly int s_DrawObjectPassDataPropID = Shader.PropertyToID("_DrawObjectPassData");//Deprecated
         /// <summary>
-        /// 构造函数
+        /// 构造函数 Done
         /// </summary>
         public DrawObjectsPass(string profilerTag, ShaderTagId[] shaderTagIds, bool opaque, RenderPassEvent evt, RenderQueueRange renderQueueRange, LayerMask layerMask, StencilState stencilState, int stencilReference)
         {
@@ -37,6 +37,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 m_RenderStateBlock.stencilState = stencilState;
             }
         }
+        // Done
         public DrawObjectsPass(string profilerTag, bool opaque, RenderPassEvent evt, RenderQueueRange renderQueueRange, LayerMask layerMask, StencilState stencilState, int stencilReference)
             : this(profilerTag,
                 new ShaderTagId[] { new ShaderTagId("SRPDefaultUnlit"), new ShaderTagId("UniversalForward"), new ShaderTagId("UniversalForwardOnly"), new ShaderTagId("LightweightForward")},
@@ -50,7 +51,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         }
 
         /// <summary>
-        /// 绘制
+        /// 绘制 Done
         /// </summary>
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {

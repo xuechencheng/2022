@@ -22,7 +22,7 @@ Shader "Hidden/Universal Render Pipeline/SubpixelMorphologicalAntialiasing"
         {
             Stencil
             {
-                WriteMask [_StencilMask]
+                WriteMask [_StencilMask]//64
                 Ref [_StencilRef]
                 Comp Always
                 Pass Replace

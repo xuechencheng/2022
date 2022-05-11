@@ -153,7 +153,7 @@ namespace UnityEngine.Rendering
         /// </code>
         /// </example>
 
-        //属性插值
+        //属性插值 Done
         public virtual void Override(VolumeComponent state, float interpFactor)
         {
             int count = parameters.Count;

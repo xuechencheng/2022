@@ -173,11 +173,10 @@ half SampleScreenSpaceShadowmap(float4 shadowCoord)
 
     return attenuation;
 }
-// 1st
+// PCF
 real SampleShadowmapFiltered(TEXTURE2D_SHADOW_PARAM(ShadowMap, sampler_ShadowMap), float4 shadowCoord, ShadowSamplingData samplingData)
 {
     real attenuation;
-
 #if defined(SHADER_API_MOBILE) || defined(SHADER_API_SWITCH)
     // 4-tap hardware comparison
     real4 attenuation4;
@@ -190,7 +189,6 @@ real SampleShadowmapFiltered(TEXTURE2D_SHADOW_PARAM(ShadowMap, sampler_ShadowMap
     float fetchesWeights[9];
     float2 fetchesUV[9];
     SampleShadow_ComputeSamples_Tent_5x5(samplingData.shadowmapSize, shadowCoord.xy, fetchesWeights, fetchesUV);
-
     attenuation = fetchesWeights[0] * SAMPLE_TEXTURE2D_SHADOW(ShadowMap, sampler_ShadowMap, float3(fetchesUV[0].xy, shadowCoord.z));
     attenuation += fetchesWeights[1] * SAMPLE_TEXTURE2D_SHADOW(ShadowMap, sampler_ShadowMap, float3(fetchesUV[1].xy, shadowCoord.z));
     attenuation += fetchesWeights[2] * SAMPLE_TEXTURE2D_SHADOW(ShadowMap, sampler_ShadowMap, float3(fetchesUV[2].xy, shadowCoord.z));
@@ -201,7 +199,6 @@ real SampleShadowmapFiltered(TEXTURE2D_SHADOW_PARAM(ShadowMap, sampler_ShadowMap
     attenuation += fetchesWeights[7] * SAMPLE_TEXTURE2D_SHADOW(ShadowMap, sampler_ShadowMap, float3(fetchesUV[7].xy, shadowCoord.z));
     attenuation += fetchesWeights[8] * SAMPLE_TEXTURE2D_SHADOW(ShadowMap, sampler_ShadowMap, float3(fetchesUV[8].xy, shadowCoord.z));
 #endif
-
     return attenuation;
 }
 // 1st
@@ -224,7 +221,7 @@ real SampleShadowmap(TEXTURE2D_SHADOW_PARAM(ShadowMap, sampler_ShadowMap), float
     // TODO: We could use branch here to save some perf on some platforms.
     return BEYOND_SHADOW_FAR(shadowCoord) ? 1.0 : attenuation;
 }
-// 计算级联索引 1st 
+// 计算级联索引 
 half ComputeCascadeIndex(float3 positionWS)
 {
     float3 fromCenter0 = positionWS - _CascadeShadowSplitSpheres0.xyz;
@@ -236,7 +233,7 @@ half ComputeCascadeIndex(float3 positionWS)
     weights.yzw = saturate(weights.yzw - weights.xyz);//处理一个点同时在两个球上的情况
     return 4 - dot(weights, half4(4, 3, 2, 1));
 }
-// 从世界坐标转换到级联阴影贴图的坐标 1st 
+// 从世界坐标转换到级联阴影贴图的坐标 
 float4 TransformWorldToShadowCoord(float3 positionWS)
 {
 #ifdef _MAIN_LIGHT_SHADOWS_CASCADE
@@ -255,7 +252,7 @@ half MainLightRealtimeShadow(float4 shadowCoord)
     return 1.0h;
 #endif
     ShadowSamplingData shadowSamplingData = GetMainLightShadowSamplingData();
-    half4 shadowParams = GetMainLightShadowParams();
+    half4 shadowParams = GetMainLightShadowParams();//x: shadowStrength, y: 1.0 if soft shadows, 0.0 otherwise, z: oneOverFadeDist, w: minusStartFade
     return SampleShadowmap(TEXTURE2D_ARGS(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, false);
 }
 
@@ -284,7 +281,7 @@ half AdditionalLightRealtimeShadow(int lightIndex, float3 positionWS)
     half4 shadowParams = GetAdditionalLightShadowParams(lightIndex);
     return SampleShadowmap(TEXTURE2D_ARGS(_AdditionalLightsShadowmapTexture, sampler_AdditionalLightsShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, true);
 }
-//阴影过渡 1st
+//阴影过渡
 half GetShadowFade(float3 positionWS)
 {
     float3 camToPixel = positionWS - _WorldSpaceCameraPos;
@@ -293,7 +290,7 @@ half GetShadowFade(float3 positionWS)
     half fade = saturate(distanceCamToPixel2 * _MainLightShadowParams.z + _MainLightShadowParams.w);
     return fade * fade;
 }
-//混合实时阴影和烘焙阴影 shadowFade越小，越接近实时阴影 shadowFade为1的时候就是烘焙阴影 1st
+//混合实时阴影和烘焙阴影 shadowFade越小，越接近实时阴影 shadowFade为1的时候就是烘焙阴影
 half MixRealtimeAndBakedShadows(half realtimeShadow, half bakedShadow, half shadowFade)
 {
 #if defined(LIGHTMAP_SHADOW_MIXING)
@@ -324,7 +321,7 @@ half MainLightShadow(float4 shadowCoord, float3 positionWS, half4 shadowMask, ha
     half bakedShadow = 1.0h;
 #endif
 #ifdef MAIN_LIGHT_CALCULATE_SHADOWS
-    half shadowFade = GetShadowFade(positionWS);
+    half shadowFade = GetShadowFade(positionWS);//实时和烘焙阴影混合
 #else
     half shadowFade = 1.0h;
 #endif
@@ -353,18 +350,18 @@ half AdditionalLightShadow(int lightIndex, float3 positionWS, half4 shadowMask, 
     return MixRealtimeAndBakedShadows(realtimeShadow, bakedShadow, shadowFade);
 }
 
-// 获取阴影坐标 1st
+// 获取阴影坐标
 float4 GetShadowCoord(VertexPositionInputs vertexInput)
 {
     return TransformWorldToShadowCoord(vertexInput.positionWS);
 }
 
-// Done
+// 沿着光照方向和法线方向偏移位置
 float3 ApplyShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection)
 {
-    float invNdotL = 1.0 - saturate(dot(lightDirection, normalWS));//光照方向与法线垂直时候，该值为1；平行时，该值为0。
-    float scale = invNdotL * _ShadowBias.y;
-
+    //光照方向与法线垂直时候，该值为0；平行时，该值为1。
+    float invNdotL = 1.0 - saturate(dot(lightDirection, normalWS));
+    float scale = invNdotL * _ShadowBias.y;// x: depth bias, y: normal bias
     // normal bias is negative since we want to apply an inset normal offset
     positionWS = lightDirection * _ShadowBias.xxx + positionWS; //沿着光照方向移动相同距离
     positionWS = normalWS * scale.xxx + positionWS;//沿着法线方向移动一个与夹角有关的距离

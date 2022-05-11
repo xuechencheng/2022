@@ -1,15 +1,16 @@
 #ifndef UNITY_SHADER_VARIABLES_FUNCTIONS_INCLUDED
 #define UNITY_SHADER_VARIABLES_FUNCTIONS_INCLUDED
-// 初始化位置信息 1st
+// 初始化位置信息
 VertexPositionInputs GetVertexPositionInputs(float3 positionOS)
 {
     VertexPositionInputs input;
     input.positionWS = TransformObjectToWorld(positionOS);
     input.positionVS = TransformWorldToView(input.positionWS);
     input.positionCS = TransformWorldToHClip(input.positionWS);
-    float4 ndc = input.positionCS * 0.5f;// -0.5--0.5
-    input.positionNDC.xy = float2(ndc.x, ndc.y * _ProjectionParams.x) + ndc.w;//xy = 1 / 2 (xy  + w);将xy / w从[-1 , 1]变到[0 , 1]
-    input.positionNDC.zw = input.positionCS.zw;// zw = zw; 
+    //将xy从[-1, 1]变化到[0, 1]
+    float4 ndc = input.positionCS * 0.5f;
+    input.positionNDC.xy = float2(ndc.x, ndc.y * _ProjectionParams.x) + ndc.w;
+    input.positionNDC.zw = input.positionCS.zw;
     return input;
 }
 
@@ -22,7 +23,7 @@ VertexNormalInputs GetVertexNormalInputs(float3 normalOS)
     return tbn;
 }
 
-// Perfect 1st
+// 计算世界空间的法线，切线和第二切线
 VertexNormalInputs GetVertexNormalInputs(float3 normalOS, float4 tangentOS)
 {
     VertexNormalInputs tbn;
@@ -65,8 +66,7 @@ float3 GetViewForwardDir()
     return -viewMat[2].xyz;
 }
 
-// 1st 
-// 从像素指向相机
+// 视野方向，从像素指向相机
 float3 GetWorldSpaceViewDir(float3 positionWS)
 {
     if (IsPerspectiveProjection())
@@ -137,7 +137,7 @@ real3 NormalizeNormalPerVertex(real3 normalWS)
         return normalize(normalWS);
     #endif
 }
-//单位化法线 1st
+//单位化法线
 real3 NormalizeNormalPerPixel(real3 normalWS)
 {
     #if defined(SHADER_QUALITY_HIGH) || defined(_NORMALMAP)
@@ -156,7 +156,7 @@ float4 ComputeScreenPos(float4 positionCS)
     o.zw = positionCS.zw;
     return o;
 }
-// 根据深度值z计算雾的影响 1st
+// 根据深度值z计算雾的影响
 real ComputeFogFactor(float z)
 {
     float clipZ_01 = UNITY_Z_0_FAR_FROM_CLIPSPACE(z);
@@ -200,7 +200,7 @@ half3 MixFogColor(real3 fragColor, real3 fogColor, real fogFactor)
     #endif
     return fragColor;
 }
-// 1st
+// MixFog
 half3 MixFog(real3 fragColor, real fogFactor)
 {
     return MixFogColor(fragColor, unity_FogColor.rgb, fogFactor);
@@ -226,10 +226,10 @@ void TransformNormalizedScreenUV(inout float2 uv)
         TransformScreenUV(uv, 1.0);
     #endif
 }
-// 1st
+// 屏幕空间UV
 float2 GetNormalizedScreenSpaceUV(float2 positionCS)
 {
-    float2 normalizedScreenSpaceUV = positionCS.xy * rcp(GetScaledScreenParams().xy); //rcp 近似的倒数
+    float2 normalizedScreenSpaceUV = positionCS.xy * rcp(GetScaledScreenParams().xy); //rcp 近似的倒数 scaledCameraWidth, scaledCameraHeight
     TransformNormalizedScreenUV(normalizedScreenSpaceUV);
     return normalizedScreenSpaceUV;
 }

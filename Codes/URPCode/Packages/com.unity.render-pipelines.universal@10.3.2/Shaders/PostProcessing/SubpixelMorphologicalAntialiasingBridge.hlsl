@@ -20,8 +20,7 @@ TEXTURE2D_X(_BlendTexture);
 TEXTURE2D(_AreaTexture);
 TEXTURE2D(_SearchTexture);
 
-float4 _Metrics; 
-//new Vector4(1f / m_Descriptor.width, 1f / m_Descriptor.height, m_Descriptor.width, m_Descriptor.height)
+float4 _Metrics; //new Vector4(1f / m_Descriptor.width, 1f / m_Descriptor.height, m_Descriptor.width, m_Descriptor.height)
 #define SMAA_RT_METRICS _Metrics 
 #define SMAA_AREATEX_SELECT(s) s.rg
 #define SMAA_SEARCHTEX_SELECT(s) s.a
@@ -58,6 +57,9 @@ VaryingsEdge VertEdge(Attributes input)
     output.positionCS = TransformFullscreenMesh(input.positionOS.xyz);
     output.uv = UnityStereoTransformScreenSpaceTex(input.uv);//uv
 #endif  
+    //float4(-1.0, 0.0, 0.0, -1.0)
+    //float4(1.0, 0.0, 0.0, 1.0)
+    //float4(-2.0, 0.0, 0.0, -2.0)
     SMAAEdgeDetectionVS(output.uv, output.offsets);
     return output;
 }
@@ -91,6 +93,7 @@ VaryingsBlend VertBlend(Attributes input)
     output.positionCS = TransformFullscreenMesh(input.positionOS.xyz);
     output.uv = UnityStereoTransformScreenSpaceTex(input.uv);
 #endif  
+    //offsets (-0.25, -0.125, 1.25, -0.125) (-0.125, -0.25, -0.125, 1.25) 
     SMAABlendingWeightCalculationVS(output.uv, output.pixcoord, output.offsets);
     return output;
 }

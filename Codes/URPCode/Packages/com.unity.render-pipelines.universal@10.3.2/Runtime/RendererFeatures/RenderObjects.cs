@@ -91,7 +91,7 @@ namespace UnityEngine.Experimental.Rendering.Universal
                     settings.stencilSettings.failOperation, settings.stencilSettings.zFailOperation);
         }
         /// <summary>
-        /// Enqueue ScriptableRenderer
+        /// Enqueue ScriptableRenderer Done
         /// </summary>
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {

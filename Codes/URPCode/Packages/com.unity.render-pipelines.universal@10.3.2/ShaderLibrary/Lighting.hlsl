@@ -27,7 +27,7 @@
 
 #ifdef LIGHTMAP_ON
     #define DECLARE_LIGHTMAP_OR_SH(lmName, shName, index) float2 lmName : TEXCOORD##index
-    //计算LightMap的UV 1st
+    //计算LightMap的UV
     #define OUTPUT_LIGHTMAP_UV(lightmapUV, lightmapScaleOffset, OUT) OUT.xy = lightmapUV.xy * lightmapScaleOffset.xy + lightmapScaleOffset.zw;
     #define OUTPUT_SH(normalWS, OUT)
 #else
@@ -122,7 +122,7 @@ Light GetMainLight(float4 shadowCoord)
     light.shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
     return light;
 }
-//1st
+//主光源
 Light GetMainLight(float4 shadowCoord, float3 positionWS, half4 shadowMask)
 {
     Light light = GetMainLight();
@@ -273,7 +273,7 @@ half ReflectivitySpecular(half3 specular)
 #endif
 }
 
-// 0.96 * (1 - metallic) 1st
+// 0.96 * (1 - metallic)
 half OneMinusReflectivityMetallic(half metallic)
 {
     // We'll need oneMinusReflectivity, so
@@ -284,7 +284,7 @@ half OneMinusReflectivityMetallic(half metallic)
     half oneMinusDielectricSpec = kDielectricSpec.a; // 0.96
     return oneMinusDielectricSpec - metallic * oneMinusDielectricSpec;
 }
-// 1st
+// InitializeBRDFDataDirect
 inline void InitializeBRDFDataDirect(half3 diffuse, half3 specular, half reflectivity, half oneMinusReflectivity, half smoothness, inout half alpha, out BRDFData outBRDFData)
 {
     outBRDFData.diffuse = diffuse;
@@ -304,7 +304,7 @@ inline void InitializeBRDFDataDirect(half3 diffuse, half3 specular, half reflect
 #endif
 }
 
-// 1st
+// InitializeBRDFData
 inline void InitializeBRDFData(half3 albedo, half metallic, half3 specular, half smoothness, inout half alpha, out BRDFData outBRDFData)
 {
 #ifdef _SPECULAR_SETUP
@@ -316,7 +316,7 @@ inline void InitializeBRDFData(half3 albedo, half metallic, half3 specular, half
     half oneMinusReflectivity = OneMinusReflectivityMetallic(metallic);
     half reflectivity = 1.0 - oneMinusReflectivity;// ≈ metallic
     half3 brdfDiffuse = albedo * oneMinusReflectivity;
-    half3 brdfSpecular = lerp(kDieletricSpec.rgb, albedo, metallic);
+    half3 brdfSpecular = lerp(kDieletricSpec.rgb, albedo, metallic);//kDieletricSpec = half4(0.04, 0.04, 0.04, 1.0 - 0.04)
 #endif 
     InitializeBRDFDataDirect(brdfDiffuse, brdfSpecular, reflectivity, oneMinusReflectivity, smoothness, alpha, outBRDFData);
 }
@@ -366,7 +366,7 @@ inline void InitializeBRDFDataClearCoat(half clearCoatMask, half clearCoatSmooth
 }
 
 // Computes the specular term for EnvironmentBRDF
-// Perfect 环境光高光系数
+// 环境光高光系数
 half3 EnvironmentBRDFSpecular(BRDFData brdfData, half fresnelTerm)
 {
     float surfaceReduction = 1.0 / (brdfData.roughness2 + 1.0);
@@ -389,7 +389,7 @@ half3 EnvironmentBRDFClearCoat(BRDFData brdfData, half clearCoatMask, half3 indi
 
 // Computes the scalar specular term for Minimalist CookTorrance BRDF
 // NOTE: needs to be multiplied with reflectance f0, i.e. specular color to complete
-// Perfect 高光系数
+// 高光系数
 half DirectBRDFSpecular(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS, half3 viewDirectionWS)
 {
     float3 halfDir = SafeNormalize(float3(lightDirectionWS) + float3(viewDirectionWS));
@@ -576,19 +576,18 @@ half3 SampleLightmap(float2 lightmapUV, half3 normalWS)
 // We either sample GI from baked lightmap or from probes.
 // If lightmap: sampleData.xy = lightmapUV
 // If probe: sampleData.xyz = L2 SH terms
-// 采样光照贴图或者光照探针 1st
+// 采样光照贴图或者光照探针
 #if defined(LIGHTMAP_ON)
     #define SAMPLE_GI(lmName, shName, normalWSName) SampleLightmap(lmName, normalWSName)
 #else
     #define SAMPLE_GI(lmName, shName, normalWSName) SampleSHPixel(shName, normalWSName)
 #endif
-// Perfect 采样天空盒
+// 采样天空盒
 half3 GlossyEnvironmentReflection(half3 reflectVector, half perceptualRoughness, half occlusion)
 {
 #if !defined(_ENVIRONMENTREFLECTIONS_OFF)
     half mip = PerceptualRoughnessToMipmapLevel(perceptualRoughness);
     half4 encodedIrradiance = SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, reflectVector, mip);
-    //TODO:DOTS - we need to port probes to live in c# so we can manage this manually.
     #if defined(UNITY_USE_NATIVE_HDR) || defined(UNITY_DOTS_INSTANCING_ENABLED)
         half3 irradiance = encodedIrradiance.rgb;
     #else
@@ -626,14 +625,14 @@ half3 SubtractDirectMainLightFromLightmap(Light mainLight, half3 normalWS, half3
     // 3) Pick darkest color
     return min(bakedGI, realtimeShadow);
 }
-//Perfect 全局光照
+//全局光照
 half3 GlobalIllumination(BRDFData brdfData, BRDFData brdfDataClearCoat, float clearCoatMask,
     half3 bakedGI, half occlusion, half3 normalWS, half3 viewDirectionWS){
     half3 reflectVector = reflect(-viewDirectionWS, normalWS);
     half NoV = saturate(dot(normalWS, viewDirectionWS));
     half fresnelTerm = Pow4(1.0 - NoV);
     half3 indirectDiffuse = bakedGI * occlusion;
-    half3 indirectSpecular = GlossyEnvironmentReflection(reflectVector, brdfData.perceptualRoughness, occlusion);
+    half3 indirectSpecular = GlossyEnvironmentReflection(reflectVector, brdfData.perceptualRoughness, occlusion);//天空盒高光
     half3 color = EnvironmentBRDF(brdfData, indirectDiffuse, indirectSpecular, fresnelTerm);
 #if defined(_CLEARCOAT) || defined(_CLEARCOATMAP)
     half3 coatIndirectSpecular = GlossyEnvironmentReflection(reflectVector, brdfDataClearCoat.perceptualRoughness, occlusion);
@@ -687,7 +686,7 @@ half3 LightingSpecular(half3 lightColor, half3 lightDir, half3 normal, half3 vie
     half3 specularReflection = specular.rgb * modifier;
     return lightColor * specularReflection;
 }
-//Perfect 直接光照
+//直接光照
 half3 LightingPhysicallyBased(BRDFData brdfData, BRDFData brdfDataClearCoat, half3 lightColor, half3 lightDirectionWS, half lightAttenuation,
     half3 normalWS, half3 viewDirectionWS, half clearCoatMask, bool specularHighlightsOff){
     half NdotL = saturate(dot(normalWS, lightDirectionWS));
@@ -759,7 +758,7 @@ half3 LightingPhysicallyBased(BRDFData brdfData, half3 lightColor, half3 lightDi
 }
 
 //ADDITIONAL_VERTEX_LIGHTS
-//1st
+//顶点额外Lambert光 
 half3 VertexLighting(float3 positionWS, half3 normalWS)
 {
     half3 vertexLightColor = half3(0.0, 0.0, 0.0);
@@ -787,14 +786,11 @@ half4 UniversalFragmentPBR(InputData inputData, SurfaceData surfaceData)
     bool specularHighlightsOff = false;
 #endif
     BRDFData brdfData;
-    // NOTE: can modify alpha
     InitializeBRDFData(surfaceData.albedo, surfaceData.metallic, surfaceData.specular, surfaceData.smoothness, surfaceData.alpha, brdfData);
     BRDFData brdfDataClearCoat = (BRDFData)0;
 #if defined(_CLEARCOAT) || defined(_CLEARCOATMAP)
-    // base brdfData is modified here, rely on the compiler to eliminate dead computation by InitializeBRDFData()
     InitializeBRDFDataClearCoat(surfaceData.clearCoatMask, surfaceData.clearCoatSmoothness, brdfData, brdfDataClearCoat);
 #endif
-    // To ensure backward compatibility we have to avoid using shadowMask input, as it is not present in older shaders
 #if defined(SHADOWS_SHADOWMASK) && defined(LIGHTMAP_ON)
     half4 shadowMask = inputData.shadowMask;
 #elif !defined (LIGHTMAP_ON)
@@ -810,12 +806,9 @@ half4 UniversalFragmentPBR(InputData inputData, SurfaceData surfaceData)
     #endif
     MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI);//subtractive Mode 
     half3 color = GlobalIllumination(brdfData, brdfDataClearCoat, surfaceData.clearCoatMask,
-                                     inputData.bakedGI, surfaceData.occlusion,
-                                     inputData.normalWS, inputData.viewDirectionWS);
-    color += LightingPhysicallyBased(brdfData, brdfDataClearCoat,
-                                     mainLight,
-                                     inputData.normalWS, inputData.viewDirectionWS,
-                                     surfaceData.clearCoatMask, specularHighlightsOff);
+                                     inputData.bakedGI, surfaceData.occlusion, inputData.normalWS, inputData.viewDirectionWS);
+    color += LightingPhysicallyBased(brdfData, brdfDataClearCoat, mainLight,
+                                     inputData.normalWS, inputData.viewDirectionWS,surfaceData.clearCoatMask, specularHighlightsOff);
 #ifdef _ADDITIONAL_LIGHTS
     uint pixelLightCount = GetAdditionalLightsCount();
     for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
@@ -824,10 +817,8 @@ half4 UniversalFragmentPBR(InputData inputData, SurfaceData surfaceData)
         #if defined(_SCREEN_SPACE_OCCLUSION)
             light.color *= aoFactor.directAmbientOcclusion;
         #endif
-        color += LightingPhysicallyBased(brdfData, brdfDataClearCoat,
-                                         light,
-                                         inputData.normalWS, inputData.viewDirectionWS,
-                                         surfaceData.clearCoatMask, specularHighlightsOff);
+        color += LightingPhysicallyBased(brdfData, brdfDataClearCoat, light,
+                                         inputData.normalWS, inputData.viewDirectionWS, surfaceData.clearCoatMask, specularHighlightsOff);
     }
 #endif
 #ifdef _ADDITIONAL_LIGHTS_VERTEX

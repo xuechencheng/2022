@@ -44,7 +44,7 @@ namespace UnityEngine.Rendering
             stack.Dispose();
         }
         /// <summary>
-        /// 实例化所有继承自VolumeComponent的类，并加入到m_ComponentsDefaultState
+        /// 实例化所有继承自VolumeComponent的类，并加入到m_ComponentsDefaultState Done
         /// </summary>
         void ReloadBaseTypes()
         {
@@ -123,6 +123,7 @@ namespace UnityEngine.Rendering
             Unregister(volume, prevLayer);
             Register(volume, newLayer);
         }
+        //Done
         void OverrideData(VolumeStack stack, List<VolumeComponent> components, float interpFactor)
         {
             foreach (var component in components)
@@ -134,7 +135,7 @@ namespace UnityEngine.Rendering
             }
         }
         /// <summary>
-        /// 用components替换stack中的数据
+        /// 用components替换stack中的数据 Done
         /// </summary>
         void ReplaceData(VolumeStack stack, List<VolumeComponent> components)
         {
@@ -153,7 +154,7 @@ namespace UnityEngine.Rendering
             }
         }
         /// <summary>
-        /// 根据需要重载m_ComponentsDefaultState
+        /// 根据需要重载m_ComponentsDefaultState Done
         /// </summary>
         [Conditional("UNITY_EDITOR")]
         public void CheckBaseTypes()
@@ -162,7 +163,7 @@ namespace UnityEngine.Rendering
                 ReloadBaseTypes();
         }
         /// <summary>
-        /// 根据需要重载stack.components
+        /// 根据需要重载stack.components Done
         /// </summary>
         /// <param name="stack"></param>
         [Conditional("UNITY_EDITOR")]
@@ -188,7 +189,7 @@ namespace UnityEngine.Rendering
             Update(stack, trigger, layerMask);
         }
         /// <summary>
-        /// 根据Volumes进行属性插值
+        /// 根据Volumes进行属性插值 Done
         /// </summary>
         public void Update(VolumeStack stack, Transform trigger, LayerMask layerMask)
         {
@@ -293,7 +294,7 @@ namespace UnityEngine.Rendering
         }
 
         /// <summary>
-        /// 根据Priority排序
+        /// 根据Priority排序 Done
         /// </summary>
         static void SortByPriority(List<Volume> volumes)
         {
